@@ -66,33 +66,63 @@ def route(request: str):
     return "unknown", _extract_topic(request)
 
 
-def handle_request(request: str) -> str:
+def handle_request(request: str, auto_publish: bool = False) -> str:
     """Route the request and run the matched agent pipeline. Imports agents
     lazily inside each handler so routing stays importable without an API
-    key; only the branch that actually runs needs GEMINI_API_KEY set."""
+    key; only the branch that actually runs needs GEMINI_API_KEY set.
+
+    auto_publish: when True, a draft that PASSES the voice guardrails is
+    promoted straight to the site (content/insights-data.json + article page)
+    instead of only being saved to the review docx. Drafts that fail the
+    guardrails always fall back to the docx, never auto-published."""
     from observability import log_decision
 
     intent, topic = route(request)
     log_decision(
         agent="orchestrator", action="route",
-        inputs={"request": request},
+        inputs={"request": request, "auto_publish": auto_publish},
         decision={"intent": intent, "topic": topic},
     )
 
     if intent == "plan_cycle":
-        return _handle_plan_cycle()
+        return _handle_plan_cycle(auto_publish)
     if intent == "trending":
         return _handle_trending(topic)
     if intent == "essay":
-        return _handle_essay(topic)
+        return _handle_essay(topic, auto_publish)
     if intent == "field_note":
-        return _handle_field_note(topic)
+        return _handle_field_note(topic, auto_publish)
     if intent == "engagement":
         return _handle_engagement()
     return ("[ORCHESTRATOR] Did not recognize that request. Try things like "
             "\"What should we publish this quarter?\", \"What's trending?\", "
             "\"Draft an essay about board AI governance\", or "
             "\"Write a field note about return-to-office\".")
+
+
+def _deliver(fmt, topic, pillar, result, auto_publish, lines):
+    """Route one finished draft to the site (if auto_publish and it passed the
+    guardrails) or to the review docx (otherwise). Appends a status line."""
+    from doc_output import append_to_doc
+
+    text = result["text"]
+    passed = result["evaluation"]["passed"]
+    label = "[Essay] " if fmt == "essay" else "[Field note] "
+
+    if auto_publish and passed:
+        from content_publisher import promote_to_site
+        res = promote_to_site(body=text, fmt=fmt, pillar=pillar)
+        target = "site" if res["is_site"] else "site_output"
+        lines.append("    -> published to %s: %s (\"%s\")"
+                     % (target, res["entry"]["href"], res["entry"]["title"]))
+        return
+
+    append_to_doc(DRAFTS_DOC, label + topic, text)
+    if auto_publish and not passed:
+        lines.append("    -> did NOT pass guardrails; saved to docx for review "
+                     "instead of publishing")
+    else:
+        lines.append("    -> draft saved to docx")
 
 
 def _default_pillar_for(topic, briefing):
@@ -106,13 +136,12 @@ def _default_pillar_for(topic, briefing):
     return PILLAR_NAMES[0]
 
 
-def _handle_plan_cycle() -> str:
+def _handle_plan_cycle(auto_publish=False) -> str:
     from agents.scout import find_topics
     from agents.strategist import plan_cycle
     from agents.analyst import get_pillar_adjustments
-    from agents.essay_writer import write_essay
-    from agents.field_note_writer import write_field_note
-    from doc_output import append_to_doc
+    from agents.essay_writer import draft_essay
+    from agents.field_note_writer import draft_field_note
     from guardrails import CALL_PACING_SECONDS
 
     briefing = find_topics()
@@ -131,14 +160,17 @@ def _handle_plan_cycle() -> str:
         lines.append(f"  {item['slot']}: {pillar} ({item['format']}) - {topic}")
 
         if item["format"] == "essay":
-            text = write_essay(topic, pillar)
-            append_to_doc(DRAFTS_DOC, "[Essay] " + topic, text)
+            result = draft_essay(topic, pillar)
         else:
-            text = write_field_note(topic, pillar)
-            append_to_doc(DRAFTS_DOC, "[Field note] " + topic, text)
+            result = draft_field_note(topic, pillar)
+        _deliver(item["format"], topic, pillar, result, auto_publish, lines)
 
-    lines.append("Drafts saved to '%s'. Review, then promote approved pieces "
-                 "from the UI." % DRAFTS_DOC)
+    if auto_publish:
+        lines.append("Auto-publish on: passing drafts went to the site. Commit "
+                     "and push metis-website to make them live.")
+    else:
+        lines.append("Drafts saved to '%s'. Review, then promote approved "
+                     "pieces from the UI." % DRAFTS_DOC)
     return "\n".join(lines)
 
 
@@ -148,10 +180,9 @@ def _handle_trending(topic) -> str:
     return "[ORCHESTRATOR] Trending (trailing 3 months):\n" + json.dumps(briefing, indent=2)
 
 
-def _handle_essay(topic) -> str:
+def _handle_essay(topic, auto_publish=False) -> str:
     from agents.scout import find_topics
-    from agents.essay_writer import write_essay
-    from doc_output import append_to_doc
+    from agents.essay_writer import draft_essay
 
     briefing = None
     if not topic:
@@ -164,15 +195,15 @@ def _handle_essay(topic) -> str:
     else:
         pillar = _default_pillar_for(topic, briefing)
 
-    text = write_essay(topic, pillar)
-    append_to_doc(DRAFTS_DOC, "[Essay] " + topic, text)
-    return f"[ORCHESTRATOR] Essay draft ({pillar}) saved to '{DRAFTS_DOC}':\n\n{text}"
+    result = draft_essay(topic, pillar)
+    lines = [f"[ORCHESTRATOR] Essay draft ({pillar}):"]
+    _deliver("essay", topic, pillar, result, auto_publish, lines)
+    return "\n".join(lines) + "\n\n" + result["text"]
 
 
-def _handle_field_note(topic) -> str:
+def _handle_field_note(topic, auto_publish=False) -> str:
     from agents.scout import find_topics
-    from agents.field_note_writer import write_field_note
-    from doc_output import append_to_doc
+    from agents.field_note_writer import draft_field_note
 
     briefing = None
     if not topic:
@@ -185,9 +216,10 @@ def _handle_field_note(topic) -> str:
     else:
         pillar = _default_pillar_for(topic, briefing)
 
-    text = write_field_note(topic, pillar)
-    append_to_doc(DRAFTS_DOC, "[Field note] " + topic, text)
-    return f"[ORCHESTRATOR] Field note draft ({pillar}) saved to '{DRAFTS_DOC}':\n\n{text}"
+    result = draft_field_note(topic, pillar)
+    lines = [f"[ORCHESTRATOR] Field note draft ({pillar}):"]
+    _deliver("field_note", topic, pillar, result, auto_publish, lines)
+    return "\n".join(lines) + "\n\n" + result["text"]
 
 
 def _handle_engagement() -> str:

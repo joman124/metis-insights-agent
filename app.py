@@ -205,8 +205,26 @@ with st.sidebar:
 
     if USING_PLACEHOLDER_REFERENCES:
         st.warning("Voice judge is scoring against placeholder site-copy "
-                   "samples. Drop real essays into voice_reference/ to raise "
-                   "the bar.")
+                   "samples. Drop real essays into voice_reference/ (.txt or "
+                   ".docx) to raise the bar.")
+
+    st.divider()
+    st.subheader("Publishing")
+    auto_publish = st.checkbox(
+        "Auto-publish passing drafts to the site",
+        value=False, key="auto_publish",
+        help="When on, any draft that PASSES the voice guardrails is written "
+             "straight to the site (content/insights-data.json + article "
+             "page). Drafts that fail always fall back to the docx for review. "
+             "You still commit + push metis-website to make them live.",
+        disabled=USING_PLACEHOLDER_REFERENCES)
+    if USING_PLACEHOLDER_REFERENCES:
+        st.caption("Auto-publish is locked until real voice samples are in "
+                   "voice_reference/ -- do not auto-publish against placeholder "
+                   "voice.")
+    elif auto_publish:
+        st.caption("On: passing drafts publish automatically. Review still "
+                   "happens at the git commit step.")
 
     st.write("**Models**")
     st.write("- Agents / judge: `%s`" % (os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"))
@@ -261,8 +279,9 @@ if run and request.strip():
     with st.spinner("Running the agent pipeline... this can take a few minutes for a full plan."):
         try:
             from agents.orchestrator import handle_request
-            result = handle_request(request)
-            st.success("Done. Drafts (if any) were saved to '%s'." % DRAFTS_DOC)
+            result = handle_request(
+                request, auto_publish=st.session_state.get("auto_publish", False))
+            st.success("Done. See the response below for where each draft went.")
             st.text_area("Response", value=result, height=360)
         except SystemExit as exc:
             st.error(str(exc))

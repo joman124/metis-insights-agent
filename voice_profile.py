@@ -209,22 +209,48 @@ _PLACEHOLDER_PASSAGES = [
 ]
 
 
+def _read_docx(path):
+    """Extract text from a .docx (paragraphs joined). Empty string if
+    python-docx is missing or the file cannot be read."""
+    try:
+        from docx import Document
+    except ImportError:
+        return ""
+    try:
+        doc = Document(path)
+    except Exception:
+        return ""
+    return "\n".join(p.text for p in doc.paragraphs).strip()
+
+
 def _load_reference_passages():
-    """Return the reference passage set. If any .txt files exist in the
+    """Return the reference passage set. If any sample files exist in the
     voice_reference/ folder next to this module, use those (real Metis-voice
     samples) and ignore the placeholders. Otherwise fall back to the site-copy
-    placeholders so the judge always has something to score against."""
+    placeholders so the judge always has something to score against.
+
+    Supported sample formats: .txt and .docx (one sample per file). The folder
+    README and any dot/underscore-prefixed files are skipped so they are never
+    mistaken for voice samples. .doc (old binary Word) is not supported -- save
+    those as .docx or .txt."""
     ref_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            "voice_reference")
     samples = []
     if os.path.isdir(ref_dir):
         for name in sorted(os.listdir(ref_dir)):
-            if not name.lower().endswith(".txt"):
+            low = name.lower()
+            if low.startswith(("readme", "_", ".")):
                 continue
-            try:
-                with open(os.path.join(ref_dir, name), "r", encoding="utf-8") as f:
-                    text = f.read().strip()
-            except OSError:
+            path = os.path.join(ref_dir, name)
+            if low.endswith(".txt"):
+                try:
+                    with open(path, "r", encoding="utf-8", errors="replace") as f:
+                        text = f.read().strip()
+                except OSError:
+                    text = ""
+            elif low.endswith(".docx"):
+                text = _read_docx(path)
+            else:
                 continue
             if text:
                 samples.append(text)
