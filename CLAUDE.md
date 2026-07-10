@@ -92,3 +92,18 @@ writes it yet); an email newsletter (deferred until there is a list).
 John engages directly with critique and makes clear decisions. Honest
 pushback is welcomed. Do not pad responses. Build outward -- resist
 over-polishing any one step.
+
+## John's standing preferences (remember these)
+
+- **Claude handles all GitHub/git operations directly.** John does not want to
+  interface with git, bundles, patches, or the command line for version
+  control. Commit and push changes to GitHub yourself (both this repo and
+  metis-website). If pushing is blocked, use `add_repo` to bring the repo into
+  session scope first; do not hand John bundle/patch files to push manually
+  unless there is genuinely no other option, and say so plainly if so.
+- **.env values go in the file, not the terminal.** John is on Windows and is
+  not a developer. When something needs configuring, tell him to edit the file
+  (e.g. `notepad .env`), never to type `KEY=value` at the prompt. Explain runs
+  in plain, numbered steps.
+- **Drafts are editable before publishing.** The UI Drafts tab lets John revise
+  a draft's text (and title) and publish the edited version directly.
