@@ -101,6 +101,8 @@ over-polishing any one step.
   metis-website). If pushing is blocked, use `add_repo` to bring the repo into
   session scope first; do not hand John bundle/patch files to push manually
   unless there is genuinely no other option, and say so plainly if so.
+- **New repos are created PRIVATE by default.** Only make a repo public if John
+  explicitly asks.
 - **.env values go in the file, not the terminal.** John is on Windows and is
   not a developer. When something needs configuring, tell him to edit the file
   (e.g. `notepad .env`), never to type `KEY=value` at the prompt. Explain runs
