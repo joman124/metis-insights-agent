@@ -42,12 +42,19 @@ VOICE_SYSTEM_PROMPT = (
 "VOICE RULES -- DO:\n"
 "- Open with a pattern, a precise observation from the work, or a claim you "
 "can defend. Never open with a hook, a statistic for shock, or a question.\n"
-"- Keep sentences short and declarative. Let one land before the next.\n"
+"- Vary the rhythm: a short claim, then one sentence that earns it with a "
+"concrete detail. Do not stack more than two long, clause-heavy sentences "
+"in a row.\n"
 "- Name the mechanism underneath a behavior, not just the behavior.\n"
 "- Use organizational-psychology language precisely (regulation under "
 "pressure, psychological safety, decision architecture, behavioral change), "
 "never as decoration.\n"
-"- Stay concrete: what a leader actually did, what a team actually does.\n"
+"- Stay concrete: anchor every claim to a specific person, title, date, "
+"decision, or artifact, not an abstraction. Prefer 'the CEO, appointed in "
+"2021, was mandated to...' over 'leadership decided to...'.\n"
+"- When attributing a claim, name the source and, where it strengthens the "
+"point, quote them directly. Never attribute to 'observers' or 'many "
+"believe'.\n"
 "- Describe patterns without judging the people inside them. We measure; we "
 "do not moralize.\n"
 "- Use 'we' for the firm's point of view; 'I' is fine in a short field note.\n"
@@ -167,6 +174,14 @@ NEGATIVE_PARALLELISM_FLAGS = [
 # pattern requires the reassertion pivot (the "...it's Y" / "...but Y" half),
 # so a trailing qualifier that negates WITHOUT reasserting does not match.
 # Applied case-insensitively in guardrails.py. Kept ASCII.
+#
+# NOTE: the Newman's Own reference sample itself leans on this construction
+# ("did not function as a marketing veneer but as the structural core...")
+# six times in ~1030 words. That is more than this pipeline tolerates from a
+# generated draft. Deliberately not relaxing the ban: a human source gets more
+# latitude than a Gemini-drafted essay, and this is exactly the rhythm the
+# guardrail exists to catch when a model reaches for it as a crutch. Flagged
+# for John in case he wants it treated differently for case studies.
 ANTITHESIS_PATTERNS = [
     r"\bit'?s not\b[^.!?]{0,50}?,\s*it'?s\b",
     r"\bit\s+is\s+not\b[^.!?]{0,50}?,\s*it\s+is\b",
@@ -185,10 +200,10 @@ ANTITHESIS_PATTERNS = [
 # the pipeline is testable end to end TODAY. They are thinner than real
 # essays, so the judge starts lenient.
 #
-# TODO: replace with real Metis-voice writing samples the moment John supplies
-# them. Drop one sample per .txt file into the voice_reference/ folder next to
-# this file; _load_reference_passages() will pick them up automatically and
-# use them INSTEAD of the placeholders below (see USING_PLACEHOLDER_REFERENCES).
+# A real sample now lives in voice_reference/ (the Newman's Own culture case
+# study), so _load_reference_passages() uses it INSTEAD of the placeholders
+# below (see USING_PLACEHOLDER_REFERENCES). Drop additional samples in as
+# .txt or .docx to broaden the reference set the judge scores against.
 # ---------------------------------------------------------------------------
 
 _PLACEHOLDER_PASSAGES = [
@@ -299,9 +314,10 @@ JUDGE_SYSTEM_INSTRUCTION = (
 # writer agents. The voice judge is separate and always runs deterministic
 # (temp 0) since it scores, not generates.
 #
-# max_em_dashes is provisional: the Metis site copy uses em dashes deliberately,
-# so essays get a moderate allowance rather than the near-zero the book voice
-# used. Recalibrate once real reference samples land in voice_reference/.
+# max_em_dashes is calibrated against the Newman's Own reference sample: it
+# runs 4 em dashes in ~1030 words, about 1 per 258 words. That checks out
+# against the existing allowances (essay 6 over up to 1500 words, field_note
+# 2 over up to 400 words), so both are left as-is rather than guessed.
 # ---------------------------------------------------------------------------
 CONTENT_RULES = {
     "essay": {

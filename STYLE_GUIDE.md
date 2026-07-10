@@ -12,10 +12,14 @@ brand. Not a thought leader. Restrained, aphoristic, precise.
 **Opening.** Start with a pattern, a precise observation from the work, or a
 claim you can defend. Never a hook, never a shock statistic, never a question.
 
-**Movement.** Short declarative sentences. Let one land before the next. Name
-the *mechanism* underneath a behavior, not just the behavior. Use one concrete
-example a leader would recognize. Stay specific: what a leader actually did,
-what a team actually does.
+**Movement.** Vary the rhythm: a short claim, then one sentence that earns it
+with a concrete detail. Do not stack more than two long, clause-heavy
+sentences in a row. Name the *mechanism* underneath a behavior, not just the
+behavior. Anchor every claim to a specific person, title, date, decision, or
+artifact rather than an abstraction -- "the CEO, appointed in 2021, was
+mandated to..." beats "leadership decided to...". When attributing a claim,
+name the source and quote them directly where it strengthens the point; never
+"observers note" or "many believe".
 
 **Vocabulary.** Organizational-psychology language used precisely, never as
 decoration: regulation under pressure, psychological safety, decision
@@ -57,12 +61,15 @@ These are generic and carry across any brand. Full enforcement lives in
    a **hard guardrail fail**: "it's not X, it's Y", "not just X but Y", "not
    about X, it's about Y". State the point once. (A trailing qualifier that
    only negates -- "..., not the other way around" -- is fine; the reassertion
-   half is the tell.)
+   half is the tell.) Note: the Newman's Own reference sample uses this
+   construction several times itself. The ban stays in force for generated
+   drafts regardless -- a human source gets more latitude than a model reaching
+   for a rhetorical crutch.
 6. **No rule-of-three padding.**
-7. **Em dashes are allowed but load-bearing.** The Metis site uses them
-   deliberately; keep them rare (essay limit 6, field note limit 2 -- tune in
-   `CONTENT_RULES` once real samples land). Curly quotes are a hard fail; use
-   straight quotes.
+7. **Em dashes are allowed but load-bearing.** Keep them rare (essay limit 6,
+   field note limit 2). Calibrated against the Newman's Own sample (4 em
+   dashes in ~1030 words, about 1 per 258 words), which checks out against
+   both limits as-is. Curly quotes are a hard fail; use straight quotes.
 8. **No AI vocabulary.** delve, intricate, multifaceted, tapestry, landscape
    (figurative), realm, foster, bolster, pivotal, crucial, robust, nuanced,
    holistic, leverage, harness.
