@@ -1,0 +1,26 @@
+# Secrets
+.env
+
+# Generated content (draft essays / field notes, reviewed before publishing)
+*.docx
+
+# Runtime observability trace (regenerated every run)
+logs/
+
+# Local publish output when the Metis site checkout is not alongside this repo
+site_output/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
