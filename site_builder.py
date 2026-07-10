@@ -42,6 +42,43 @@ def paragraphs_html(body: str) -> str:
     return "\n        ".join("<p>" + _escape(b).replace("\n", "<br>") + "</p>" for b in blocks)
 
 
+def _is_section_header(block: str) -> bool:
+    """A block reads as a section header (not a paragraph) if it is a single
+    short line, title-cased, with no sentence-ending punctuation -- the
+    pattern case_study_writer.py's prompt asks for between sections, mirroring
+    headers like "Purpose as Operating Principle" in the Newman's Own sample."""
+    if "\n" in block:
+        return False
+    words = block.split()
+    if not (2 <= len(words) <= 7):
+        return False
+    if block[-1] in ".!?,;:":
+        return False
+    return block[0].isupper()
+
+
+def case_study_body_html(body: str) -> str:
+    """Like paragraphs_html, but a block that reads as a section header
+    (see _is_section_header) becomes <h3> instead of <p>, so the generated
+    article page shows the same section structure the writer drafted."""
+    blocks = [b.strip() for b in re.split(r"\n\s*\n", body.strip()) if b.strip()]
+    if not blocks:
+        blocks = [body.strip()]
+    out = []
+    for b in blocks:
+        tag = "h3" if _is_section_header(b) else "p"
+        out.append(f"<{tag}>" + _escape(b).replace("\n", "<br>") + f"</{tag}>")
+    return "\n        ".join(out)
+
+
+def render_body_html(body: str, fmt: str = "essay") -> str:
+    """Dispatch to the format-appropriate body renderer. Only case_study gets
+    header detection; essay/field_note behavior is unchanged."""
+    if fmt == "case_study":
+        return case_study_body_html(body)
+    return paragraphs_html(body)
+
+
 def read_time(body: str, fmt: str = "essay") -> str:
     """A 'N min read' label from the word count and the format's reading
     speed."""
@@ -85,6 +122,7 @@ _ARTICLE_TEMPLATE = """<!doctype html>
     .meta .dot { color: var(--metis-charred-plum); }
     .article-body { font-size: 18px; line-height: 1.7; font-weight: 300; color: var(--metis-deep-indigo); margin-top: 40px; }
     .article-body p { margin: 0 0 24px; }
+    .article-body h3 { font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--metis-charred-plum); margin: 44px 0 16px; }
     .byline { display:flex; align-items:center; gap:14px; margin-top: 56px; padding-top: 24px; border-top: 1px solid rgba(28,30,63,0.10); }
     .byline .name { font-size: 13px; font-weight: 500; color: var(--metis-deep-indigo); }
     .byline .role { font-family: var(--font-display); font-style: italic; font-size: 13px; color: var(--slate-600); }
@@ -158,12 +196,15 @@ def render_article(entry: dict) -> str:
     Expects keys: title, dek, pillar, format, read_time, published_date,
     body_html. Missing optional fields degrade gracefully."""
     fmt = entry.get("format", "essay")
-    format_label = "Field note" if fmt == "field_note" else "Essay"
+    format_label = {"field_note": "Field note", "case_study": "Case study"}.get(fmt, "Essay")
     dek = entry.get("dek") or ""
+    eyebrow = entry.get("pillar", "")
+    if fmt == "case_study" and entry.get("subject"):
+        eyebrow = eyebrow + " " + chr(0x00B7) + " " + entry["subject"]
     replacements = {
         "%%TITLE%%": _escape(entry.get("title", "Untitled")),
         "%%DEK%%": _escape(dek),
-        "%%PILLAR%%": _escape(entry.get("pillar", "")),
+        "%%PILLAR%%": _escape(eyebrow),
         "%%FORMAT_LABEL%%": format_label,
         "%%READ_TIME%%": _escape(entry.get("read_time", "")),
         "%%DATE%%": _escape(entry.get("published_date", "")),

@@ -7,10 +7,12 @@ This file orients Claude Code to the project. Read it first, then
 
 A multi-agent AI system that researches, plans, drafts, and voice-checks
 content for the **Insights** section of the Metis Advisory Group website
-(metisag.com). It produces long-form **essays** (published about quarterly)
-and short **field notes** (about monthly), in the Metis brand voice, and
-promotes approved pieces into the static site as a JSON data file plus a
-generated article page.
+(metisag.com). It produces long-form **essays** (published about quarterly),
+short **field notes** (about monthly), and **case studies** (also about
+quarterly) -- a close analysis of one named company or leader, pillar-tagged
+like the other two formats and shown as a section within Insights (not a
+separate page) -- all in the Metis brand voice, and promotes approved pieces
+into the static site as a JSON data file plus a generated article page.
 
 John reviews and promotes. The system does everything else.
 
@@ -78,14 +80,36 @@ metis-website is a **deliberate manual step** -- this tool never runs git.
 
 The full pipeline is built: Scout (`agents/scout.py`), Strategist
 (`agents/strategist.py`), Essay Writer (`agents/essay_writer.py`), Field Note
-Writer (`agents/field_note_writer.py`), Analyst (`agents/analyst.py`), and the
+Writer (`agents/field_note_writer.py`), Case Study Writer
+(`agents/case_study_writer.py`), Analyst (`agents/analyst.py`), and the
 Orchestrator (`agents/orchestrator.py`), all wired to a Streamlit UI
 (`app.py`) and the publisher (`content_publisher.py` + `site_builder.py`).
 Guardrails and the Gemini client carried over unchanged in behavior.
 
-Open follow-ups: real voice samples in `voice_reference/`; wiring real reader
-analytics into `memory/engagement_data.json` (the Analyst reads it but nothing
-writes it yet); an email newsletter (deferred until there is a list).
+A real voice sample is in `voice_reference/` (the Newman's Own culture case
+study), so the voice judge scores against it rather than placeholders --
+`USING_PLACEHOLDER_REFERENCES` is False and auto-publish is unlocked.
+
+Case studies (`agents/case_study_writer.py`) are a third content line: a
+close analysis of one named company or leader, structured with section
+headers (mirrors the Newman's Own sample's structure, not just its voice --
+see `site_builder.case_study_body_html()` for how headers render). Unlike
+essays/field notes, this format needs a subject, which either comes from the
+user's request directly ("write a case study about X") or from
+`agents/scout.py`'s `suggested_subject` field when it flags a specific
+company/leader. `agents/scout.py` has no search grounding for the writer
+itself, so a case study without Scout-sourced `research_notes` is instructed
+to stay with well-established public knowledge rather than invent specifics
+-- a real accuracy constraint given these name real companies and people.
+Cadence: `CASE_STUDY_INTERVAL_DAYS` in `agents/strategist.py`, defaulted to
+quarterly (same as essays) since John hadn't specified one -- tune if that
+turns out wrong.
+
+Open follow-ups: wiring real reader analytics into
+`memory/engagement_data.json` (the Analyst reads it but nothing writes it
+yet); an email newsletter (deferred until there is a list); more voice
+samples in `voice_reference/` to broaden the judge's reference set beyond the
+one sample.
 
 ## Working relationship
 

@@ -27,7 +27,7 @@ from pillars import PILLAR_NAMES
 
 MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
 
-FORMATS = ["essay", "field_note"]
+FORMATS = ["essay", "field_note", "case_study"]
 LOOKBACK_DAYS = 90
 
 SYSTEM_INSTRUCTION = (
@@ -49,8 +49,11 @@ SYSTEM_INSTRUCTION = (
     "patterns under the org chart\n"
     "- Organizational Systems & Change Psychology: change that lasts, systems "
     "metabolising change\n\n"
-    "Formats: 'essay' (a quarterly long-form piece worth 800-1500 words) or "
-    "'field_note' (a short monthly observation, 150-400 words)."
+    "Formats: 'essay' (a quarterly long-form piece worth 800-1500 words), "
+    "'field_note' (a short monthly observation, 150-400 words), or "
+    "'case_study' (a close analysis of ONE named company or leader's approach "
+    "-- suggest this only when a specific, identifiable subject makes the "
+    "story, not just a trend)."
 )
 
 
@@ -68,7 +71,7 @@ def find_topics(theme: str = None, count: int = 5) -> list:
 {since.isoformat()} and {today.isoformat()} (the trailing three months) that a
 senior leadership audience would find worth thinking about.{focus}
 
-For each one, return an object with exactly these six keys:
+For each one, return an object with exactly these seven keys:
 - headline: the real development, in your own words
 - source: the publication or outlet name
 - relevance_score: integer 1-10, how well it rewards an organizational-
@@ -77,6 +80,8 @@ For each one, return an object with exactly these six keys:
   naming the underlying pattern -- not a generic summary
 - suggested_pillar: exactly one of {PILLAR_NAMES}
 - suggested_format: exactly one of {FORMATS}
+- suggested_subject: the specific company or leader name this item is about,
+  ONLY when suggested_format is "case_study"; empty string otherwise
 
 Return ONLY a JSON array of {count} objects. No markdown code fences, no
 preamble, no explanation - just the raw JSON array."""

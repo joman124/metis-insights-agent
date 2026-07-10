@@ -37,7 +37,7 @@ _REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 DATA_RELPATH = os.path.join("content", "insights-data.json")
 ARTICLE_DIR = "insights"
 
-_EMPTY_DATA = {"featured": None, "essays": [], "notes": []}
+_EMPTY_DATA = {"featured": None, "essays": [], "notes": [], "case_studies": []}
 
 
 # --------------------------------------------------------------------------
@@ -127,7 +127,8 @@ def record_publish(title: str, pillar: str, fmt: str, href: str,
 # --------------------------------------------------------------------------
 def _unique_slug(base: str, data: dict, site_dir: str) -> str:
     existing = set()
-    for e in ([data.get("featured")] + data.get("essays", []) + data.get("notes", [])):
+    for e in ([data.get("featured")] + data.get("essays", []) + data.get("notes", [])
+              + data.get("case_studies", [])):
         if e and e.get("slug"):
             existing.add(e["slug"])
     slug = base
@@ -142,28 +143,39 @@ def _unique_slug(base: str, data: dict, site_dir: str) -> str:
 def promote_to_site(body: str, fmt: str, pillar: str, title: str = None,
                     dek: str = None, featured: bool = None,
                     status: str = "Published", published_date: str = None,
-                    site_dir: str = None) -> dict:
+                    site_dir: str = None, subject: str = None) -> dict:
     """Promote one approved draft into site content. body is the draft text,
-    fmt is 'essay' or 'field_note', pillar is a full Metis pillar name.
+    fmt is 'essay', 'field_note', or 'case_study'; pillar is a full Metis
+    pillar name. subject is the company/leader name a case_study analyzes
+    (required for that format, ignored otherwise).
 
     title/dek are derived from the body via the writer agents when not given
     (one cheap Gemini call). featured defaults to True for essays (newest
-    essay becomes the featured slot) and is ignored for field notes.
+    essay becomes the featured slot) and is ignored for field notes and case
+    studies.
 
     Returns a dict describing what was written (entry, data_path,
     article_path, site_dir, is_site, history_entry)."""
-    if fmt not in ("essay", "field_note"):
-        raise ValueError("fmt must be 'essay' or 'field_note', got %r" % fmt)
+    if fmt not in ("essay", "field_note", "case_study"):
+        raise ValueError(
+            "fmt must be 'essay', 'field_note', or 'case_study', got %r" % fmt)
     if pillar not in PILLAR_NAMES:
         raise ValueError("Unknown pillar %r. Expected one of: %s"
                          % (pillar, ", ".join(PILLAR_NAMES)))
+    if fmt == "case_study" and not subject:
+        raise ValueError("fmt='case_study' requires subject (the company or leader analyzed)")
 
     # Derive metadata lazily (keeps this module importable without an API key
     # unless a caller actually omits the title).
-    if title is None or (fmt == "essay" and dek is None):
+    if title is None or (fmt in ("essay", "case_study") and dek is None):
         if fmt == "essay":
             from agents.essay_writer import propose_metadata
             meta = propose_metadata(body, pillar)
+            title = title or meta["title"]
+            dek = dek if dek is not None else meta["dek"]
+        elif fmt == "case_study":
+            from agents.case_study_writer import propose_metadata
+            meta = propose_metadata(body, pillar, subject)
             title = title or meta["title"]
             dek = dek if dek is not None else meta["dek"]
         else:
@@ -190,12 +202,14 @@ def promote_to_site(body: str, fmt: str, pillar: str, title: str = None,
         "read_time": site_builder.read_time(body, fmt),
         "published_date": published_date,
         "href": href,
-        "body_html": site_builder.paragraphs_html(body),
+        "body_html": site_builder.render_body_html(body, fmt),
         "byline_name": site_builder.BYLINE_NAME,
         "byline_role": site_builder.BYLINE_ROLE,
     }
     if fmt == "field_note":
         entry["date"] = site_builder.quarter_label(published_date)
+    if fmt == "case_study":
+        entry["subject"] = subject
 
     # Slot it into the data structure.
     if fmt == "essay":
@@ -206,6 +220,8 @@ def promote_to_site(body: str, fmt: str, pillar: str, title: str = None,
             data["featured"] = entry
         else:
             data["essays"].insert(0, entry)
+    elif fmt == "case_study":
+        data["case_studies"].insert(0, entry)
     else:
         data["notes"].insert(0, entry)
 
@@ -239,3 +255,4 @@ if __name__ == "__main__":
     print("Featured: " + (feat["title"] if feat else "(none)"))
     print("Essays: %d" % len(data.get("essays", [])))
     print("Field notes: %d" % len(data.get("notes", [])))
+    print("Case studies: %d" % len(data.get("case_studies", [])))

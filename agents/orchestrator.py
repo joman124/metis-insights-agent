@@ -23,6 +23,7 @@ DRAFTS_DOC = "Insights Drafts.docx"
 
 _TOPIC_PATTERNS = [
     re.compile(r"\babout\s+(.+)$", re.IGNORECASE),
+    re.compile(r"\banalyz(?:e|ing)\s+(.+)$", re.IGNORECASE),
     re.compile(r"\breacting to\s+(.+)$", re.IGNORECASE),
     re.compile(r"\bon\s+(.+)$", re.IGNORECASE),
 ]
@@ -52,6 +53,9 @@ def route(request: str):
     if any(p in lowered for p in ("trending", "what's happening", "whats happening",
                                   "in the news", "scout")):
         return "trending", _extract_topic(request)
+
+    if "case study" in lowered or "case-study" in lowered or lowered.strip().startswith("analyze "):
+        return "case_study", _extract_topic(request)
 
     if "essay" in lowered:
         return "essay", _extract_topic(request)
@@ -92,26 +96,32 @@ def handle_request(request: str, auto_publish: bool = False) -> str:
         return _handle_essay(topic, auto_publish)
     if intent == "field_note":
         return _handle_field_note(topic, auto_publish)
+    if intent == "case_study":
+        return _handle_case_study(topic, auto_publish)
     if intent == "engagement":
         return _handle_engagement()
     return ("[ORCHESTRATOR] Did not recognize that request. Try things like "
             "\"What should we publish this quarter?\", \"What's trending?\", "
-            "\"Draft an essay about board AI governance\", or "
-            "\"Write a field note about return-to-office\".")
+            "\"Draft an essay about board AI governance\", "
+            "\"Write a field note about return-to-office\", or "
+            "\"Write a case study about <company or leader>\".")
 
 
-def _deliver(fmt, topic, pillar, result, auto_publish, lines):
+_LABELS = {"essay": "[Essay] ", "field_note": "[Field note] ", "case_study": "[Case study] "}
+
+
+def _deliver(fmt, topic, pillar, result, auto_publish, lines, subject=None):
     """Route one finished draft to the site (if auto_publish and it passed the
     guardrails) or to the review docx (otherwise). Appends a status line."""
     from doc_output import append_to_doc
 
     text = result["text"]
     passed = result["evaluation"]["passed"]
-    label = "[Essay] " if fmt == "essay" else "[Field note] "
+    label = _LABELS.get(fmt, "[Essay] ")
 
     if auto_publish and passed:
         from content_publisher import promote_to_site
-        res = promote_to_site(body=text, fmt=fmt, pillar=pillar)
+        res = promote_to_site(body=text, fmt=fmt, pillar=pillar, subject=subject)
         target = "site" if res["is_site"] else "site_output"
         lines.append("    -> published to %s: %s (\"%s\")"
                      % (target, res["entry"]["href"], res["entry"]["title"]))
@@ -142,6 +152,7 @@ def _handle_plan_cycle(auto_publish=False) -> str:
     from agents.analyst import get_pillar_adjustments
     from agents.essay_writer import draft_essay
     from agents.field_note_writer import draft_field_note
+    from agents.case_study_writer import draft_case_study
     from guardrails import CALL_PACING_SECONDS
 
     briefing = find_topics()
@@ -150,20 +161,36 @@ def _handle_plan_cycle(auto_publish=False) -> str:
 
     lines = ["[ORCHESTRATOR] Cycle plan:"]
     for i, item in enumerate(plan):
+        pillar = item["pillar"]
+
+        # A case-study slot with no Scout-matched subject cannot be drafted --
+        # there is nothing to analyze. Note it and move on instead of
+        # spending a Gemini call on a slot that would just fail.
+        if item["format"] == "case_study" and not item.get("subject"):
+            lines.append(f"  {item['slot']}: {pillar} (case_study) - "
+                          "no subject found this cycle, skipped")
+            continue
+
         if i > 0:
             # Each item runs its own revise loop of Gemini calls; pause between
             # items too so a multi-item plan does not burst the per-minute cap.
             time.sleep(CALL_PACING_SECONDS)
 
         topic = item["topic"] or item["pillar"]
-        pillar = item["pillar"]
         lines.append(f"  {item['slot']}: {pillar} ({item['format']}) - {topic}")
 
         if item["format"] == "essay":
             result = draft_essay(topic, pillar)
+            _deliver(item["format"], topic, pillar, result, auto_publish, lines)
+        elif item["format"] == "case_study":
+            subject = item["subject"]
+            result = draft_case_study(subject, pillar, angle=item.get("topic"),
+                                      research_notes=item.get("source_headline"))
+            _deliver(item["format"], subject, pillar, result, auto_publish, lines,
+                     subject=subject)
         else:
             result = draft_field_note(topic, pillar)
-        _deliver(item["format"], topic, pillar, result, auto_publish, lines)
+            _deliver(item["format"], topic, pillar, result, auto_publish, lines)
 
     if auto_publish:
         lines.append("Auto-publish on: passing drafts went to the site. Commit "
@@ -219,6 +246,38 @@ def _handle_field_note(topic, auto_publish=False) -> str:
     result = draft_field_note(topic, pillar)
     lines = [f"[ORCHESTRATOR] Field note draft ({pillar}):"]
     _deliver("field_note", topic, pillar, result, auto_publish, lines)
+    return "\n".join(lines) + "\n\n" + result["text"]
+
+
+def _handle_case_study(topic, auto_publish=False) -> str:
+    from agents.scout import find_topics
+    from agents.case_study_writer import draft_case_study
+
+    angle = None
+    research_notes = None
+
+    if topic:
+        # An explicit request ("write a case study about X") names the
+        # subject directly; no Scout research to ground it with.
+        subject = topic
+        pillar = _default_pillar_for(topic, None)
+    else:
+        briefing = find_topics()
+        candidates = [b for b in briefing
+                     if b.get("suggested_format") == "case_study" and b.get("suggested_subject")]
+        if not candidates:
+            return ("[ORCHESTRATOR] Scout found no case-study subject this run. "
+                     "Try a specific one, e.g. \"Write a case study about "
+                     "<company or leader>\".")
+        pick = candidates[0]
+        subject = pick["suggested_subject"]
+        angle = pick.get("suggested_angle")
+        research_notes = pick.get("headline")
+        pillar = pick.get("suggested_pillar")
+
+    result = draft_case_study(subject, pillar, angle=angle, research_notes=research_notes)
+    lines = [f"[ORCHESTRATOR] Case study draft ({pillar}) on {subject}:"]
+    _deliver("case_study", subject, pillar, result, auto_publish, lines, subject=subject)
     return "\n".join(lines) + "\n\n" + result["text"]
 
 

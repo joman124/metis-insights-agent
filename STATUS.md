@@ -3,19 +3,23 @@
 Current state of the Metis Insights Agent and the open work. Read this after
 CLAUDE.md when picking the project back up.
 
-## Done and on GitHub
+## Done and pushed
 
-Branch `claude/metis-insights-kaggle-adapt-ervcif` (this repo) holds the full
-pipeline: Scout, Strategist, essay/field-note writers, Analyst, Orchestrator,
-guardrails, `content_publisher` + `site_builder`, and the Streamlit UI. Plus:
-- Auto-publish toggle in the UI (locked until real voice samples exist).
+Pipeline: Scout, Strategist, essay/field-note/case-study writers, Analyst,
+Orchestrator, guardrails, `content_publisher` + `site_builder`, and the
+Streamlit UI. Plus:
+- Auto-publish toggle in the UI (unlocked -- a real voice sample is in
+  `voice_reference/`, see below).
 - `voice_reference/` loader reads `.txt` and `.docx` samples.
 - Drafts tab is editable: revise a draft's text and title, then publish the
-  edited version directly.
+  edited version directly. Three columns now: Essays, Case studies, Field
+  notes.
 
-The companion repo **metis-website** (same branch name) renders the Insights
-page from `content/insights-data.json` via `site/insights-loader.js`, with the
-filter chips mapped to the five Metis Pillars.
+The companion repo **metis-website** renders the Insights page from
+`content/insights-data.json` via `site/insights-loader.js`, with the filter
+chips mapped to the five Metis Pillars. Case studies are a section on
+`insights.html` (not a separate page, per John's call), pillar-tagged like
+the other two formats, hidden until the first one is published.
 
 ## How publishing works
 
@@ -24,35 +28,60 @@ generated `insights/<slug>.html` into the metis-website checkout
 (`METIS_SITE_DIR`, else `../metis-website`, else `./site_output/`), and records
 `memory/content_history.json`. Making it live = commit + push metis-website.
 
-## Open work (requested, not yet built)
+## A. Voice (TOV) tuning toward the "Newman's Own" sample -- done
 
-### A. Voice (TOV) tuning toward the "Newman's Own" sample
-Tone is ~80% there; John wants it to read like a specific "Newman's Own" doc.
-- The doc (and other samples) must be in `voice_reference/` for the judge to
-  score against it and for anyone to read its structure. Get it committed here.
-- Then tighten `voice_profile.VOICE_SYSTEM_PROMPT` + `STYLE_GUIDE.md` to the
-  sample's markers, recalibrate `CONTENT_RULES[...]['max_em_dashes']`, re-draft,
-  compare, iterate. Having real samples flips `USING_PLACEHOLDER_REFERENCES`
-  off and unlocks auto-publish.
+`voice_reference/01-newmans-own-culture-case-study.docx` is the first real
+sample; the judge scores against it, `USING_PLACEHOLDER_REFERENCES` is False.
+`voice_profile.VOICE_SYSTEM_PROMPT` and `STYLE_GUIDE.md` were tightened
+toward its markers (anchor claims to a named person/date/decision, quote
+attributed sources, vary sentence rhythm). `max_em_dashes` was checked
+against the sample's actual usage and left unchanged (already calibrated).
 
-### B. New "Case Studies" content line
-A third content line analyzing specific companies / individual leaders,
-mirroring the Newman's Own doc in BOTH tone and structure. Bigger; use plan
-mode. Likely touch points:
-- `voice_profile.CONTENT_RULES`: add a `case_study` format.
-- New `agents/case_study_writer.py` (guardrail loop; prompt mirrors the
-  Newman's Own structure -- needs that doc as the template) + metadata helper.
-- `agents/scout.py`: optionally surface case-study subjects (companies/leaders).
-- `agents/strategist.py`: cadence + pillar tagging for case studies.
-- `agents/orchestrator.py`: new intent + handler; extend `_deliver`.
-- `content_publisher.py` + `site_builder.py`: new `case_studies` section in the
-  data schema (or a parallel `content/case-studies-data.json`) + article pages.
-- `app.py`: surface case studies (drafts column, plan tab).
-- metis-website: decide placement -- a new `case-studies.html` page + nav item
-  (recommended, it's a distinct content line) vs a section inside Insights; add
-  a loader + seed data + nav links across pages.
-- Open questions for John: separate page or Insights section? Pillar-tagged, or
-  filtered by company/industry?
+One deliberate non-change worth knowing: the sample uses "not X, but Y"
+constructions six times in ~1,000 words -- exactly what the antithesis
+guardrail hard-fails on. Left the ban in place for generated drafts rather
+than loosening it (a human source gets more latitude than a model reaching
+for that rhythm as a crutch). Reverse this in `voice_profile.ANTITHESIS_PATTERNS`
+if John disagrees.
+
+## B. "Case Studies" content line -- done
+
+`agents/case_study_writer.py` drafts a close analysis of one named company or
+leader, structured to mirror the Newman's Own sample (section headers,
+mechanism-naming, a section addressed to the reader, a named tension) rather
+than just its tone. Decisions made along the way, flagged here in case John
+wants to revisit any of them:
+
+- **Placement**: a section within `insights.html`, not a separate page (John's
+  call).
+- **Tagging**: pillar-tagged like essays/notes, reusing the existing filter
+  chips (John's call).
+- **Cadence**: `CASE_STUDY_INTERVAL_DAYS = 90` in `agents/strategist.py`
+  (quarterly, same as essays) -- a default, not something John specified.
+- **Accuracy**: this writer has no search grounding of its own. A case study
+  names a real subject, so hallucinated facts are a bigger risk than in an
+  essay's abstract argument. When Scout supplies a `suggested_subject` with a
+  grounded headline, that headline is passed through as `research_notes` and
+  the prompt is told to stay inside it; without research_notes, the prompt is
+  told to stick to well-established public knowledge rather than invent
+  specifics. Worth testing against a real subject before trusting output
+  unreviewed.
+- Ad hoc requests ("write a case study about X" / "analyze X") work from the
+  UI's ask-the-agent box and route through `agents/orchestrator.py`'s new
+  `case_study` intent.
+
+## Open follow-ups
+
+- Broaden `voice_reference/` past the one sample when more real writing
+  exists -- strengthens the judge's reference set for all three formats.
+- Wire real reader analytics into `memory/engagement_data.json` (the Analyst
+  reads it but nothing writes it yet).
+- Email newsletter (deferred until there is a list).
+- Once a real case study is drafted, sanity-check the header-detection
+  heuristic in `site_builder.case_study_body_html()` against actual model
+  output -- it is a plausible pattern-match on section-header shape (short
+  line, Title Case, no ending punctuation), not a hard contract with the
+  writer prompt.
 
 ## Constraints (do not relearn the hard way)
 
@@ -61,6 +90,4 @@ mode. Likely touch points:
 - No live Gemini key in a cloud session (it is in John's local `.env`), so the
   Gemini-calling paths are verified on John's machine; no-API logic and the
   site render are verifiable in-session.
-- Claude pushes to GitHub directly (see CLAUDE.md preferences). If a push is
-  blocked, `add_repo` the repo into session scope, then set `origin` to
-  `https://github.com/joman124/<repo>` (the session proxies github.com auth).
+- Claude pushes to GitHub directly (see CLAUDE.md preferences).

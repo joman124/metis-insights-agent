@@ -332,4 +332,16 @@ CONTENT_RULES = {
         "temperature": 0.75,
         "words_per_minute": 220,
     },
+    # A close read of one named company or leader, mirroring the Newman's Own
+    # reference sample in structure (see agents/case_study_writer.py), not
+    # just voice. min_words/max_em_dashes scale from that sample's own ratio
+    # (4 em dashes / ~1030 words). temperature runs cooler than essay's 0.6:
+    # a case study is grounded in specific, checkable facts about a real
+    # subject, so drafting wants less variance, not more.
+    "case_study": {
+        "min_words": 800, "max_words": 1600,
+        "max_em_dashes": 6,
+        "temperature": 0.5,
+        "words_per_minute": 220,
+    },
 }

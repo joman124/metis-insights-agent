@@ -85,6 +85,9 @@ def load_drafts(doc_path):
         if heading.startswith("[Field note]"):
             e["format"] = "field_note"
             rest = heading[len("[Field note]"):].strip()
+        elif heading.startswith("[Case study]"):
+            e["format"] = "case_study"
+            rest = heading[len("[Case study]"):].strip()
         elif heading.startswith("[Essay]"):
             e["format"] = "essay"
             rest = heading[len("[Essay]"):].strip()
@@ -156,6 +159,11 @@ def render_draft_column(entries, fmt, label):
             title_override = st.text_input(
                 "Title (optional -- leave blank to auto-generate)",
                 key="title-%s-%d" % (fmt, i))
+            subject = None
+            if fmt == "case_study":
+                subject = st.text_input(
+                    "Subject (the company or leader this case study analyzes)",
+                    value=e["topic"], key="subject-%s-%d" % (fmt, i))
             st.divider()
             guess = topic_to_pillar.get(e["topic"])
             default_idx = PILLAR_NAMES.index(guess) if guess in PILLAR_NAMES else 0
@@ -168,15 +176,17 @@ def render_draft_column(entries, fmt, label):
                 featured = st.checkbox(
                     "Set as the featured essay", value=True,
                     key="feat-%s-%d" % (fmt, i))
+            publish_disabled = not has_api_key() or (fmt == "case_study" and not (subject or "").strip())
             if st.button("Publish to site", key="promote-%s-%d" % (fmt, i),
-                         type="primary", disabled=not has_api_key()):
+                         type="primary", disabled=publish_disabled):
                 from content_publisher import promote_to_site
                 with st.spinner("Writing site data + article page..."):
                     try:
                         result = promote_to_site(
                             body=edited_body, fmt=fmt, pillar=pillar,
                             title=(title_override.strip() or None),
-                            featured=featured if fmt == "essay" else None)
+                            featured=featured if fmt == "essay" else None,
+                            subject=(subject.strip() if subject else None))
                         promoted.add(heading)
                         where = "metis-website checkout" if result["is_site"] \
                             else "./site_output (no site checkout found)"
@@ -247,7 +257,8 @@ with st.sidebar:
         "2. **Strategist** - plans the cycle over pillar balance + cadence\n"
         "3. **Essay Writer** - long-form drafts through guardrails\n"
         "4. **Field Note Writer** - short drafts through guardrails\n"
-        "5. **Analyst** - learns from read-through, adjusts pillars")
+        "5. **Case Study Writer** - named-subject analysis through guardrails\n"
+        "6. **Analyst** - learns from read-through, adjusts pillars")
 
     st.divider()
     st.header("The five pillars")
@@ -270,7 +281,8 @@ with col_b:
 st.caption(
     "Examples: \"What should we publish this quarter?\" (full cycle plan), "
     "\"What's trending?\", \"Draft an essay about board AI governance\", "
-    "\"Write a field note about return-to-office\".")
+    "\"Write a field note about return-to-office\", \"Write a case study "
+    "about <company or leader>\".")
 
 with st.expander("Note on live runs (cost + time)"):
     st.markdown(
@@ -328,10 +340,13 @@ with tab_drafts:
         "the site data file and a standalone article page into your "
         "metis-website checkout; commit and push to publish.")
     entries = load_drafts(DRAFTS_DOC)
-    left, right = st.columns(2)
+    left, mid, right = st.columns(3)
     with left:
         st.markdown("### Essays")
         render_draft_column(entries, "essay", "Essay")
+    with mid:
+        st.markdown("### Case studies")
+        render_draft_column(entries, "case_study", "Case study")
     with right:
         st.markdown("### Field notes")
         render_draft_column(entries, "field_note", "Field note")
