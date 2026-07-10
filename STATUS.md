@@ -69,6 +69,17 @@ wants to revisit any of them:
 - Ad hoc requests ("write a case study about X" / "analyze X") work from the
   UI's ask-the-agent box and route through `agents/orchestrator.py`'s new
   `case_study` intent.
+- **Subject bank** (`case_study_subjects.py`, added after the above shipped):
+  18 companies/leaders seeded from John's "Cultures We'd Create" PDF, each
+  pillar-tagged with a real descriptive anchor as `research_notes`. When
+  Scout finds no case-study subject for a cycle -- the common case without
+  search grounding turning up something specific enough -- `agents/strategist.py`
+  now falls back to this bank instead of skipping the slot; `agents/orchestrator.py`
+  does the same for an ad hoc "write a case study" request with no subject
+  named. `content_publisher.record_publish()` now records which subject was
+  used so the bank does not repeat one until the other 17 are covered.
+  Visible in the Streamlit sidebar under "Case study idea bank." Add more
+  entries to the list in `case_study_subjects.py` as John supplies them.
 
 ## Open follow-ups
 

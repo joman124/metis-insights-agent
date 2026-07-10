@@ -106,15 +106,19 @@ def _load_history() -> list:
 
 
 def record_publish(title: str, pillar: str, fmt: str, href: str,
-                   published_date: str) -> dict:
+                   published_date: str, subject: str = None) -> dict:
     """Append one publish event to memory/content_history.json (idempotent on
-    title). Schema matches what the Strategist reads: date + pillar + format."""
+    title). Schema matches what the Strategist reads: date + pillar + format.
+    subject (case_study only) lets case_study_subjects.used_subjects() know
+    which bank entries are already covered."""
     history = _load_history()
     for entry in history:
         if entry.get("title") == title:
             return entry
     entry = {"title": title, "date": published_date, "pillar": pillar,
              "format": fmt, "href": href, "status": "published"}
+    if subject:
+        entry["subject"] = subject
     history.append(entry)
     os.makedirs(MEMORY_DIR, exist_ok=True)
     with open(CONTENT_HISTORY_PATH, "w", encoding="utf-8") as f:
@@ -233,7 +237,8 @@ def promote_to_site(body: str, fmt: str, pillar: str, title: str = None,
     with open(article_path, "w", encoding="utf-8") as f:
         f.write(site_builder.render_article(entry))
 
-    history_entry = record_publish(title, pillar, fmt, href, published_date)
+    history_entry = record_publish(title, pillar, fmt, href, published_date,
+                                   subject=subject if fmt == "case_study" else None)
 
     return {
         "entry": entry,

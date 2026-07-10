@@ -94,16 +94,21 @@ Case studies (`agents/case_study_writer.py`) are a third content line: a
 close analysis of one named company or leader, structured with section
 headers (mirrors the Newman's Own sample's structure, not just its voice --
 see `site_builder.case_study_body_html()` for how headers render). Unlike
-essays/field notes, this format needs a subject, which either comes from the
-user's request directly ("write a case study about X") or from
+essays/field notes, this format needs a subject, which comes from (in order)
+the user's request directly ("write a case study about X"),
 `agents/scout.py`'s `suggested_subject` field when it flags a specific
-company/leader. `agents/scout.py` has no search grounding for the writer
-itself, so a case study without Scout-sourced `research_notes` is instructed
-to stay with well-established public knowledge rather than invent specifics
--- a real accuracy constraint given these name real companies and people.
-Cadence: `CASE_STUDY_INTERVAL_DAYS` in `agents/strategist.py`, defaulted to
-quarterly (same as essays) since John hadn't specified one -- tune if that
-turns out wrong.
+company/leader, or `case_study_subjects.py` -- a curated bank of 18
+companies/leaders (seeded from John's "Cultures We'd Create" list) that
+`agents/strategist.py` falls back to when Scout has nothing that cycle, so a
+case-study slot is never just skipped. Each bank entry carries real
+descriptive text as `research_notes`, so a bank-sourced draft is not working
+from nothing. `agents/scout.py` has no search grounding for the writer
+itself, so a case study without `research_notes` (Scout- or bank-sourced) is
+instructed to stay with well-established public knowledge rather than invent
+specifics -- a real accuracy constraint given these name real companies and
+people. Cadence: `CASE_STUDY_INTERVAL_DAYS` in `agents/strategist.py`,
+defaulted to quarterly (same as essays) since John hadn't specified one --
+tune if that turns out wrong.
 
 Open follow-ups: wiring real reader analytics into
 `memory/engagement_data.json` (the Analyst reads it but nothing writes it

@@ -170,15 +170,30 @@ def plan_cycle(scout_briefing: list = None, pillar_adjustments: dict = None) -> 
             used_headlines.add(match["headline"])
             # Trust Scout's pillar tag when we matched on it.
             pillar = match.get("suggested_pillar", pillar)
+
+        bank_pick = None
+        if fmt == "case_study" and not match:
+            # Scout found nothing usable this cycle -- fall back to the
+            # curated subject bank instead of leaving the slot empty.
+            from case_study_subjects import pick_subject
+            bank_pick = pick_subject(pillar, history)
+            if bank_pick:
+                pillar = bank_pick["pillar"]
+
         item = {
             "slot": f"{labels[fmt]} {sum(1 for p in plan if p['format'] == fmt) + 1}",
             "format": fmt,
             "pillar": pillar,
-            "topic": match["suggested_angle"] if match else None,
-            "source_headline": match["headline"] if match else None,
+            "topic": (match["suggested_angle"] if match
+                     else bank_pick["angle"] if bank_pick else None),
+            "source_headline": (match["headline"] if match
+                                else "Metis case-study idea bank (%s)" % bank_pick["category"]
+                                if bank_pick else None),
         }
         if fmt == "case_study":
-            item["subject"] = (match.get("suggested_subject") or None) if match else None
+            item["subject"] = ((match.get("suggested_subject") or None) if match
+                               else bank_pick["subject"] if bank_pick else None)
+            item["research_notes"] = bank_pick["research_notes"] if bank_pick else None
         plan.append(item)
 
     _save_json(CALENDAR_PATH, plan)

@@ -264,6 +264,20 @@ with st.sidebar:
     st.header("The five pillars")
     st.markdown("\n".join("- " + p for p in PILLAR_NAMES))
 
+    st.divider()
+    with st.expander("Case study idea bank"):
+        st.caption(
+            "Strategist falls back to this list when Scout finds no "
+            "case-study subject on its own. Type any of these into "
+            "\"Ask the agent\" (e.g. \"Write a case study about Pixar\") to "
+            "request one directly.")
+        from case_study_subjects import CASE_STUDY_SUBJECTS
+        by_category = {}
+        for entry in CASE_STUDY_SUBJECTS:
+            by_category.setdefault(entry["category"], []).append(entry["subject"])
+        for category, subjects in by_category.items():
+            st.markdown("**%s** - %s" % (category, ", ".join(subjects)))
+
 
 # ---- Main: ask the agent --------------------------------------------------
 st.subheader("Ask the agent")

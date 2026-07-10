@@ -163,9 +163,11 @@ def _handle_plan_cycle(auto_publish=False) -> str:
     for i, item in enumerate(plan):
         pillar = item["pillar"]
 
-        # A case-study slot with no Scout-matched subject cannot be drafted --
-        # there is nothing to analyze. Note it and move on instead of
-        # spending a Gemini call on a slot that would just fail.
+        # strategist.plan_cycle() falls back to case_study_subjects.py when
+        # Scout has nothing, so this should be rare -- but a case-study slot
+        # with no subject cannot be drafted regardless of why. Note it and
+        # move on instead of spending a Gemini call on a slot that would
+        # just fail.
         if item["format"] == "case_study" and not item.get("subject"):
             lines.append(f"  {item['slot']}: {pillar} (case_study) - "
                           "no subject found this cycle, skipped")
@@ -184,8 +186,9 @@ def _handle_plan_cycle(auto_publish=False) -> str:
             _deliver(item["format"], topic, pillar, result, auto_publish, lines)
         elif item["format"] == "case_study":
             subject = item["subject"]
-            result = draft_case_study(subject, pillar, angle=item.get("topic"),
-                                      research_notes=item.get("source_headline"))
+            result = draft_case_study(
+                subject, pillar, angle=item.get("topic"),
+                research_notes=item.get("research_notes") or item.get("source_headline"))
             _deliver(item["format"], subject, pillar, result, auto_publish, lines,
                      subject=subject)
         else:
@@ -265,15 +268,29 @@ def _handle_case_study(topic, auto_publish=False) -> str:
         briefing = find_topics()
         candidates = [b for b in briefing
                      if b.get("suggested_format") == "case_study" and b.get("suggested_subject")]
-        if not candidates:
-            return ("[ORCHESTRATOR] Scout found no case-study subject this run. "
-                     "Try a specific one, e.g. \"Write a case study about "
-                     "<company or leader>\".")
-        pick = candidates[0]
-        subject = pick["suggested_subject"]
-        angle = pick.get("suggested_angle")
-        research_notes = pick.get("headline")
-        pillar = pick.get("suggested_pillar")
+        if candidates:
+            pick = candidates[0]
+            subject = pick["suggested_subject"]
+            angle = pick.get("suggested_angle")
+            research_notes = pick.get("headline")
+            pillar = pick.get("suggested_pillar")
+        else:
+            # Scout found nothing usable -- fall back to the curated subject
+            # bank instead of asking the user to name one themselves.
+            from case_study_subjects import pick_subject
+            from content_publisher import _load_history
+            from pillars import PILLAR_NAMES
+
+            bank_pick = pick_subject(PILLAR_NAMES[0], _load_history())
+            if not bank_pick:
+                return ("[ORCHESTRATOR] Scout found no case-study subject this "
+                         "run, and the idea bank is empty. Try a specific one, "
+                         "e.g. \"Write a case study about <company or "
+                         "leader>\".")
+            subject = bank_pick["subject"]
+            angle = bank_pick["angle"]
+            research_notes = bank_pick["research_notes"]
+            pillar = bank_pick["pillar"]
 
     result = draft_case_study(subject, pillar, angle=angle, research_notes=research_notes)
     lines = [f"[ORCHESTRATOR] Case study draft ({pillar}) on {subject}:"]
