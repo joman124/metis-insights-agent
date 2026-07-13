@@ -22,9 +22,17 @@ but ships its own Metis voice profile and its own agents.
 - **Orchestrator** (`agents/orchestrator.py`) - routes natural language:
   "go viral about X", "post a viral video about Y", "what's trending?".
 
-Every generated draft passes an LLM-as-judge voice score against real Metis copy
-(`metis_voice_profile.REFERENCE_PASSAGES`); it will not post content that reads
-as generic or salesy.
+Every generated draft passes TWO quality gates before it is accepted (up to 3
+redraft attempts, with each gate's feedback fed into the next try):
+1. an **LLM-as-judge voice score** against real Metis copy
+   (`metis_voice_profile.REFERENCE_PASSAGES`) -- it will not post content that
+   reads as generic or salesy; and
+2. a pure-logic **engagement critic** (`engagement.py`) -- hook length, no
+   question opener, hashtag count, length budget, emoji policy -- so a post is
+   built for reach, not just on-voice.
+
+Routing, engagement, guardrails, and the video helpers are unit-tested without
+an API key: `python -m unittest test_agents`.
 
 ## Posting
 

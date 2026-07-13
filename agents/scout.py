@@ -11,10 +11,6 @@ import json
 import os
 import sys
 
-from google.genai import types
-
-from gemini_client import generate
-
 MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
 
 PILLARS = [
@@ -67,6 +63,11 @@ For each one, return an object with exactly these six keys:
 
 Return ONLY a JSON array of {count} objects. No markdown code fences, no
 preamble, no explanation - just the raw JSON array."""
+
+    # Imported lazily so the module imports without google-genai installed
+    # (routing/tests do not need it); only this grounded call does.
+    from google.genai import types
+    from gemini_client import generate
 
     # Same grounding pattern as the After Work Scout: a thinking model with
     # Google Search grounding can return finish_reason=STOP but empty text

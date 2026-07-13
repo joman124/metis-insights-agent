@@ -29,12 +29,10 @@ import json
 import os
 import sys
 
-from google.genai import types
-
-from gemini_client import generate
 from metis_voice_profile import (VOICE_SYSTEM_PROMPT, ANTI_AI_TELL_PROMPT,
                                   PLATFORM_RULES)
 from guardrails import draft_with_guardrails
+import engagement
 
 MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
 WRITER_MODEL = os.getenv("GEMINI_WRITER_MODEL", "gemini-pro-latest")
@@ -73,6 +71,11 @@ For each one, return an object with exactly these six keys:
 
 Only include videos you can point to a real URL for. Return ONLY a JSON array
 of {count} objects. No markdown code fences, no preamble - just the raw JSON."""
+
+    # Imported lazily so the module imports without google-genai installed
+    # (tests exercise select_top/build_post without it); only this call needs it.
+    from google.genai import types
+    from gemini_client import generate
 
     raw = generate(
         MODEL,
@@ -133,6 +136,8 @@ def draft_caption(video: dict, max_attempts: int = 3) -> dict:
         max_attempts=max_attempts,
         agent="video_curator",
         temperature=CAPTION_RULES["temperature"],
+        # The caption is the post body, so it gets the same reach checks.
+        extra_checks=lambda t: engagement.check(t, CAPTION_RULES),
     )
 
 

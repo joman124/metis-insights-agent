@@ -14,6 +14,19 @@ and passes the voice judge," just short and punchy:
 The LinkedIn post is meant to be auto-posted (see linkedin_publisher.py); the
 Substack Note is saved for a human to post, since Substack has no API.
 
+Each draft must clear TWO gates before it is accepted (up to 3 attempts):
+  1. the voice judge in guardrails.py (sounds like Metis, tone authentic), and
+  2. engagement.check() -- a pure-logic reach gate (hook length, no question
+     opener, hashtag count, length budget). Its feedback is fed back into the
+     next redraft, same as the voice feedback.
+
+TUNING (where to adjust behavior):
+  - Length / hashtags / temperature: PLATFORM_RULES in metis_voice_profile.py.
+  - Weak-hook rules / the "see more" cutoff: engagement.py.
+  - What sounds like Metis / banned hype words: metis_voice_profile.py
+    (VOICE_SYSTEM_PROMPT, BANNED_PHRASES, REFERENCE_PASSAGES).
+  - logs/agent_trace.jsonl shows which gate rejected each attempt.
+
 Run:  python -m agents.viral ["optional hot topic"]
 """
 
@@ -24,6 +37,7 @@ import time
 from metis_voice_profile import (VOICE_SYSTEM_PROMPT, ANTI_AI_TELL_PROMPT,
                                   PLATFORM_RULES)
 from guardrails import draft_with_guardrails, CALL_PACING_SECONDS
+import engagement
 
 MODEL = os.getenv("GEMINI_WRITER_MODEL", "gemini-pro-latest")
 SYSTEM_INSTRUCTION = VOICE_SYSTEM_PROMPT + "\n\n" + ANTI_AI_TELL_PROMPT
@@ -95,6 +109,9 @@ def draft_viral_linkedin(topic: str, max_attempts: int = 3) -> dict:
         max_attempts=max_attempts,
         agent="viral",
         temperature=VIRAL_RULES["temperature"],
+        # Also require the draft to be built for reach (hook, length, hashtags),
+        # not just on-voice.
+        extra_checks=lambda t: engagement.check(t, VIRAL_RULES),
     )
 
 
@@ -109,6 +126,7 @@ def draft_note(topic: str, max_attempts: int = 3) -> dict:
         max_attempts=max_attempts,
         agent="viral",
         temperature=NOTE_RULES["temperature"],
+        extra_checks=lambda t: engagement.check(t, NOTE_RULES),
     )
 
 
