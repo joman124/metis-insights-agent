@@ -178,6 +178,10 @@ def curate(topic: str = None) -> dict:
             "focus topic, e.g. python -m agents.video_curator \"AI agents\"."
         )
 
+    # Brand-safety check on the clip before we react to it.
+    import safety
+    verdict = safety.assess(f"{top.get('title')} {top.get('why_it_matters')}")
+
     drafted = draft_caption(top)
     package = build_post(top, drafted["text"])
 
@@ -186,12 +190,28 @@ def curate(topic: str = None) -> dict:
         f"Creator: {top.get('creator')} ({top.get('platform')})\n"
         f"Source: {top.get('source_url')}\n"
         f"Why it matters: {top.get('why_it_matters')}\n\n"
-        f"CAPTION:\n{package['commentary']}"
+        f"CAPTION:\n{package['caption']}\n\nFIRST COMMENT:\n{package['credit']}"
     )
     append_to_doc(QUEUE_DOC, top.get("title", "viral video"), doc_body)
 
-    publish = post_text(package["commentary"])
-    package["publish"] = publish
+    import posts_ledger
+    if not verdict["safe"]:
+        # Do not auto-post a reaction to a sensitive clip; queue it.
+        posts_ledger.add(top.get("title", "viral video"), package["commentary"],
+                         "linkedin", status="queued")
+        package["publish"] = {"posted": False, "dry_run": True,
+                              "post_id": "held-sensitive", "held": True,
+                              "reason": verdict["reason"]}
+    else:
+        # Clean caption in the body, source link + credit in the first comment
+        # (LinkedIn under-distributes posts with links in the body).
+        publish = post_text(package["caption"], first_comment=package["credit"])
+        rec = posts_ledger.add(top.get("title", "viral video"), package["commentary"],
+                               "linkedin",
+                               status="posted" if not publish["dry_run"] else "queued")
+        if not publish["dry_run"]:
+            posts_ledger.mark_posted(rec["id"], publish["post_id"])
+        package["publish"] = publish
     package["evaluation"] = drafted["evaluation"]
     package["candidates"] = videos
     return package

@@ -81,6 +81,9 @@ def _handle_viral(topic) -> str:
     from linkedin_publisher import post_text
     from doc_output import append_to_doc
     from guardrails import CALL_PACING_SECONDS
+    import safety
+    import posting_policy
+    import posts_ledger
 
     if not topic:
         from agents.scout import find_topics
@@ -91,22 +94,37 @@ def _handle_viral(topic) -> str:
         topic = briefing[0].get("suggested_angle") or briefing[0].get("headline")
         time.sleep(CALL_PACING_SECONDS)
 
-    li = draft_viral_linkedin(topic)
-    append_to_doc("Metis LinkedIn Posts.docx", topic, li["text"])
-    publish = post_text(li["text"])
+    verdict = safety.assess(topic)
+    dup = posting_policy.is_duplicate(topic)
+    warnings = []
+    if dup["duplicate"]:
+        warnings.append(f"Note: close to a recent post ('{dup['match']}').")
 
+    li = draft_viral_linkedin(topic)
     time.sleep(CALL_PACING_SECONDS)
     note = draft_note(topic)
+    append_to_doc("Metis LinkedIn Posts.docx", topic, li["text"])
     append_to_doc("Metis Substack Notes.docx", topic, note["text"])
+    posts_ledger.add(topic, note["text"], "substack", status="queued")
 
-    if publish["dry_run"]:
-        li_status = ("Drafted and saved to 'Metis LinkedIn Posts.docx' (DRY RUN "
-                     "-- not posted; set LINKEDIN_DRY_RUN=false to go live).")
+    if not verdict["safe"]:
+        posts_ledger.add(topic, li["text"], "linkedin", status="queued")
+        li_status = ("HELD for review (sensitive topic: " + verdict["reason"] +
+                     "). Approve with: python review.py list")
     else:
-        li_status = f"Posted to the Metis page (id {publish['post_id']})."
+        publish = post_text(li["text"])
+        if publish["dry_run"]:
+            posts_ledger.add(topic, li["text"], "linkedin", status="queued")
+            li_status = ("Drafted and saved to 'Metis LinkedIn Posts.docx' (DRY "
+                         "RUN -- not posted; queued for review).")
+        else:
+            rec = posts_ledger.add(topic, li["text"], "linkedin", status="posted")
+            posts_ledger.mark_posted(rec["id"], publish["post_id"])
+            li_status = f"Posted to the Metis page (id {publish['post_id']})."
 
+    prefix = ("\n".join(warnings) + "\n\n") if warnings else ""
     return (
-        f"[ORCHESTRATOR] Viral reaction to: {topic}\n\n"
+        f"[ORCHESTRATOR] {prefix}Viral reaction to: {topic}\n\n"
         f"LINKEDIN POST:\n{li['text']}\n\n{li_status}\n\n"
         f"SUBSTACK NOTE (saved to 'Metis Substack Notes.docx' to post):\n"
         f"{note['text']}"
@@ -121,7 +139,10 @@ def _handle_video(topic) -> str:
     package = curate(topic)
     v = package["video"]
     pub = package["publish"]
-    if pub["dry_run"]:
+    if pub.get("held"):
+        status = (f"HELD for review (sensitive: {pub.get('reason')}). "
+                  "Approve with: python review.py list")
+    elif pub["dry_run"]:
         status = ("Saved to 'Metis Video Queue.docx' (DRY RUN -- not posted; "
                   "set LINKEDIN_DRY_RUN=false to go live).")
     else:

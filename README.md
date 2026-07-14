@@ -32,7 +32,28 @@ redraft attempts, with each gate's feedback fed into the next try):
    built for reach, not just on-voice.
 
 Routing, engagement, guardrails, and the video helpers are unit-tested without
-an API key: `python -m unittest test_agents`.
+an API key: `python -m unittest test_agents test_system`.
+
+## Running on its own (the reaction loop)
+
+See `ROADMAP.md` for the whole design. In short:
+
+- **`run_cycle.py`** - one pass of Scout -> rank the hot topics (relevance x
+  novelty x learned pillar performance, dropping unsafe/duplicate ones) ->
+  draft the best (variant-and-pick) -> **queue** it. Schedule this (Task
+  Scheduler / cron) every few hours and Metis stays reactive with no one at the
+  keyboard.
+- **`python review.py list | approve <id> | reject <id>`** - a human okays what
+  goes live; approving posts through `linkedin_publisher` (honors
+  `LINKEDIN_DRY_RUN`).
+- **Guardrails around the reaction:** `safety.py` holds sensitive topics for
+  review, `posting_policy.py` blocks near-duplicates and caps posts/day,
+  `linkedin_metrics.py` + `analytics.py` pull real engagement back in so the
+  ranking learns what works. Video reshares put the source link in the **first
+  comment** (`post_text(first_comment=...)`) for better reach.
+
+Everything defaults to dry run and the approval queue, so nothing posts to the
+Metis page without a human.
 
 ## Posting
 

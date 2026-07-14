@@ -130,8 +130,28 @@ def draft_note(topic: str, max_attempts: int = 3) -> dict:
     )
 
 
-def write_viral_post(topic: str) -> str:
-    """Thin wrapper for callers that only want the final LinkedIn text."""
+def draft_best_of_linkedin(topic: str, variants: int = 2,
+                           max_attempts: int = 3) -> dict:
+    """Variant-and-pick: draft the LinkedIn post `variants` times and keep the
+    strongest by combined voice + engagement score (ranking.pick_best). Cheap
+    reach insurance. Returns the winning draft result, with "variants" added."""
+    import ranking
+
+    candidates = []
+    for i in range(max(1, variants)):
+        if i > 0:
+            time.sleep(CALL_PACING_SECONDS)
+        candidates.append(draft_viral_linkedin(topic, max_attempts=max_attempts))
+    best = dict(ranking.pick_best(candidates))
+    best["variants"] = len(candidates)
+    return best
+
+
+def write_viral_post(topic: str, variants: int = 1) -> str:
+    """Thin wrapper for callers that only want the final LinkedIn text.
+    variants>1 turns on variant-and-pick."""
+    if variants > 1:
+        return draft_best_of_linkedin(topic, variants=variants)["text"]
     return draft_viral_linkedin(topic)["text"]
 
 

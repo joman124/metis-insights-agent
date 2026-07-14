@@ -90,11 +90,27 @@ def _text_payload(commentary: str, actor_urn: str, video_urn: str = None) -> dic
     return payload
 
 
-def post_text(commentary: str, dry_run: bool = None) -> dict:
+def _post_comment(post_urn: str, text: str, actor_urn: str) -> None:
+    """Add a comment to a post (first-comment link strategy). LinkedIn suppresses
+    reach on posts with external links in the body, so the source link goes in
+    the first comment instead. Best-effort -- a failed comment does not undo the
+    post, so we do not raise."""
+    import requests
+    import urllib.parse
+    url = ("https://api.linkedin.com/rest/socialActions/"
+           + urllib.parse.quote(post_urn, safe="") + "/comments")
+    body = {"actor": actor_urn, "message": {"text": text}}
+    try:
+        requests.post(url, headers=_headers(), json=body, timeout=30)
+    except requests.RequestException:
+        pass
+
+
+def post_text(commentary: str, dry_run: bool = None, first_comment: str = None) -> dict:
     """Post plain text (optionally with links in the body) to the Metis page.
-    This is the safe default for reacting to a third-party clip: link to the
-    original in the commentary and credit the creator. Returns
-    {"posted", "dry_run", "post_id", "actor"}."""
+    This is the safe default for reacting to a third-party clip: put the sharp
+    take in the body and the source link + credit in first_comment (better reach
+    than a link in the body). Returns {"posted", "dry_run", "post_id", "actor"}."""
     if dry_run is None:
         dry_run = _dry_run_default()
     actor_urn = _actor_urn(dry_run)
@@ -103,10 +119,13 @@ def post_text(commentary: str, dry_run: bool = None) -> dict:
     if dry_run:
         log_decision(agent="linkedin_publisher", action="post_text",
                      inputs={"actor": actor_urn, "chars": len(commentary)},
-                     decision={"dry_run": True, "payload_preview": commentary[:200]})
+                     decision={"dry_run": True, "payload_preview": commentary[:200],
+                               "first_comment": bool(first_comment)})
         print("[LINKEDIN] DRY RUN -- nothing was posted. Payload:")
         print(f"  author: {actor_urn}")
         print(f"  commentary ({len(commentary)} chars):\n{commentary}\n")
+        if first_comment:
+            print(f"  first comment (link): {first_comment}\n")
         return {"posted": False, "dry_run": True,
                 "post_id": "dry-run-simulated", "actor": actor_urn}
 
@@ -115,7 +134,10 @@ def post_text(commentary: str, dry_run: bool = None) -> dict:
         resp = requests.post(POSTS_URL, headers=_headers(), json=payload, timeout=30)
     except requests.RequestException as exc:
         raise SystemExit(f"\n[LINKEDIN] Network error posting to LinkedIn: {exc}")
-    return _finish(resp, actor_urn, len(commentary), "post_text")
+    result = _finish(resp, actor_urn, len(commentary), "post_text")
+    if first_comment and result.get("post_id"):
+        _post_comment(result["post_id"], first_comment, actor_urn)
+    return result
 
 
 def post_video(video_file: str, commentary: str, approve: bool = False,
