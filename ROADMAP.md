@@ -28,11 +28,14 @@ losing the Metis voice or the brand's judgment.
 - **First-comment link strategy** - `linkedin_publisher.post_text(first_comment=)`
   keeps external links out of the post body for reach.
 - **Tests + CI** - `test_agents.py`, `test_system.py`, GitHub Actions.
+- **Dashboard** - `app.py` (Streamlit) surfaces it all: Fast-reaction and Video-
+  reaction controls, an **Approval Queue** tab (approve/reject on screen), a
+  **Performance** tab (per-pillar metrics + a "Sync LinkedIn metrics" button),
+  a Drafts tab, and engagement scores in the trace. `streamlit run app.py`.
 
 ## Next (not yet built)
 
 - **Timing** - post at high-engagement hours instead of on-cycle.
-- **Real Streamlit review UI** - approve/reject from a screen instead of the CLI.
 - **Comment/DM follow-through** - the reach multiplier is replying fast to early
   comments; not automated yet.
 - **Native video pipeline** - reposting *links* under-distributes vs native

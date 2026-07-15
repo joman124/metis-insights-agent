@@ -55,6 +55,15 @@ See `ROADMAP.md` for the whole design. In short:
 Everything defaults to dry run and the approval queue, so nothing posts to the
 Metis page without a human.
 
+## Dashboard
+
+`streamlit run app.py` opens a browser dashboard for the whole system: ask the
+agent in natural language, a **Fast reaction** control (draft+queue a topic or
+auto find+queue), a **Video reaction** control, an **Approval Queue** tab
+(approve/reject on screen), a **Drafts** tab, a **Performance** tab (per-pillar
+metrics + a "Sync LinkedIn metrics" button), and an **Agent Trace** tab with
+voice + engagement scores. On Windows you can double-click `run_app.bat`.
+
 ## Posting
 
 - **LinkedIn** posting is automatic through `linkedin_publisher.py` (the official
