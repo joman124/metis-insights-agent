@@ -69,8 +69,14 @@ It will:
    python -m agents.orchestrator "go viral about a topic Metis cares about"
    ```
    Check the draft. Nothing is posted yet.
-2. When happy, set `LINKEDIN_DRY_RUN=false` and run again. **Watch the first
-   real post** before letting it run unattended.
+2. When happy, go live. Two ways:
+   - **In the dashboard (easiest):** open `streamlit run app.py` and flip the
+     **"Post to LinkedIn for real"** toggle in the left sidebar to ON. It turns
+     posting on for that session -- no file editing, no restart. The sidebar
+     warns you it is live, and warns if your token is missing.
+   - **Permanently:** set `LINKEDIN_DRY_RUN=false` in `.env`. That makes LIVE the
+     startup default every time (the toggle still overrides it per session).
+   **Watch the first real post** before letting it run unattended.
 
 ---
 
