@@ -143,11 +143,20 @@ def render_draft_column(entries, fmt, label):
         heading = e["heading"]
         title = heading[:90] + ("..." if len(heading) > 90 else "")
         with st.expander(title):
-            st.write(e["body"])
-            st.divider()
             if heading in promoted:
                 st.success("Promoted to the site this session.")
+                st.write(e["body"])
                 continue
+            # Editable draft: John can revise the text (and optionally set the
+            # title) right here before it is published. The edited text is what
+            # gets promoted.
+            edited_body = st.text_area(
+                "Draft (edit freely before publishing)", value=e["body"],
+                height=360, key="body-%s-%d" % (fmt, i))
+            title_override = st.text_input(
+                "Title (optional -- leave blank to auto-generate)",
+                key="title-%s-%d" % (fmt, i))
+            st.divider()
             guess = topic_to_pillar.get(e["topic"])
             default_idx = PILLAR_NAMES.index(guess) if guess in PILLAR_NAMES else 0
             pillar = st.selectbox(
@@ -159,13 +168,14 @@ def render_draft_column(entries, fmt, label):
                 featured = st.checkbox(
                     "Set as the featured essay", value=True,
                     key="feat-%s-%d" % (fmt, i))
-            if st.button("Promote to site", key="promote-%s-%d" % (fmt, i),
+            if st.button("Publish to site", key="promote-%s-%d" % (fmt, i),
                          type="primary", disabled=not has_api_key()):
                 from content_publisher import promote_to_site
-                with st.spinner("Building title/dek, writing site data + article page..."):
+                with st.spinner("Writing site data + article page..."):
                     try:
                         result = promote_to_site(
-                            body=e["body"], fmt=fmt, pillar=pillar,
+                            body=edited_body, fmt=fmt, pillar=pillar,
+                            title=(title_override.strip() or None),
                             featured=featured if fmt == "essay" else None)
                         promoted.add(heading)
                         where = "metis-website checkout" if result["is_site"] \
@@ -205,8 +215,26 @@ with st.sidebar:
 
     if USING_PLACEHOLDER_REFERENCES:
         st.warning("Voice judge is scoring against placeholder site-copy "
-                   "samples. Drop real essays into voice_reference/ to raise "
-                   "the bar.")
+                   "samples. Drop real essays into voice_reference/ (.txt or "
+                   ".docx) to raise the bar.")
+
+    st.divider()
+    st.subheader("Publishing")
+    auto_publish = st.checkbox(
+        "Auto-publish passing drafts to the site",
+        value=False, key="auto_publish",
+        help="When on, any draft that PASSES the voice guardrails is written "
+             "straight to the site (content/insights-data.json + article "
+             "page). Drafts that fail always fall back to the docx for review. "
+             "You still commit + push metis-website to make them live.",
+        disabled=USING_PLACEHOLDER_REFERENCES)
+    if USING_PLACEHOLDER_REFERENCES:
+        st.caption("Auto-publish is locked until real voice samples are in "
+                   "voice_reference/ -- do not auto-publish against placeholder "
+                   "voice.")
+    elif auto_publish:
+        st.caption("On: passing drafts publish automatically. Review still "
+                   "happens at the git commit step.")
 
     st.write("**Models**")
     st.write("- Agents / judge: `%s`" % (os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"))
@@ -261,8 +289,9 @@ if run and request.strip():
     with st.spinner("Running the agent pipeline... this can take a few minutes for a full plan."):
         try:
             from agents.orchestrator import handle_request
-            result = handle_request(request)
-            st.success("Done. Drafts (if any) were saved to '%s'." % DRAFTS_DOC)
+            result = handle_request(
+                request, auto_publish=st.session_state.get("auto_publish", False))
+            st.success("Done. See the response below for where each draft went.")
             st.text_area("Response", value=result, height=360)
         except SystemExit as exc:
             st.error(str(exc))
