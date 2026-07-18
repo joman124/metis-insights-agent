@@ -1,0 +1,26 @@
+# Secrets
+.env
+
+# Generated content (draft posts, often unpublished/personal)
+*.docx
+
+# Runtime observability trace (regenerated every run)
+logs/
+
+# Posts ledger / approval queue (runtime state; holds drafted content)
+memory/posts.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
