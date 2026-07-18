@@ -294,7 +294,12 @@ with tab_queue:
     if not queued:
         st.info("Nothing queued. Use 'Fast reaction' or 'Video reaction' above.")
     for r in reversed(queued):
-        with st.expander(("[%s] %s" % (r["platform"], r["topic"]))[:100]):
+        # expanded=True so an item stays open while you work it: clicking any
+        # button triggers a Streamlit rerun, and a collapsed expander would hide
+        # the edit box (and any save confirmation) right after you click Save,
+        # which reads as "editing did nothing."
+        with st.expander(("[%s] %s" % (r["platform"], r["topic"]))[:100],
+                         expanded=True):
             edited = st.text_area(
                 "Edit before posting",
                 value=r.get("text") or "",
@@ -305,9 +310,12 @@ with tab_queue:
             sv, ap, rj = st.columns(3)
             with sv:
                 if st.button("Save edits", key="sv-%s" % r["id"], width="stretch"):
+                    # No st.rerun() here: the button click already reran the
+                    # script with the edited value committed, edit_item has
+                    # written it to the ledger, and skipping a second rerun lets
+                    # the confirmation below stay on screen.
                     res = review.edit_item(r["id"], edited)
                     (st.success if res["ok"] else st.error)(res["msg"])
-                    st.rerun()
             with ap:
                 if st.button("Approve + post", key="ap-%s" % r["id"], width="stretch"):
                     # Save whatever is in the box first, so we post the edited
