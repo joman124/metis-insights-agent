@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "slot": "Essay 1",
+    "format": "essay",
+    "pillar": "Self-Mastery & Executive Psychology",
+    "topic": null,
+    "source_headline": null
+  },
+  {
+    "slot": "Field note 1",
+    "format": "field_note",
+    "pillar": "Strategic Thinking & Decision Architecture",
+    "topic": "The increasing focus on proactive CEO succession and leadership pipeline development underscores the critical need for boards to engage in strategic thinking and decision-making around talent cultivation, recognizing that effective leadership transitions are not merely administrative tasks but fundamental to long-term organizational resilience and value creation.",
+    "source_headline": "CEO succession planning and the strength of leadership pipelines are identified as top corporate governance priorities for 2026, driven by a demographic wave of retirements and investor scrutiny."
+  }
+]
