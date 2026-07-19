@@ -407,4 +407,8 @@ with tab_trace:
                 "Tone": scores.get("tone", ""),
                 "Intent": decision.get("intent", ""),
             })
+        # Coerce every cell to a string: the "Passed" column mixes booleans
+        # with "" (missing), which pyarrow cannot serialize into one column and
+        # would crash st.dataframe. Strings render the same and always convert.
+        rows = [{k: ("" if v == "" else str(v)) for k, v in row.items()} for row in rows]
         st.dataframe(rows, width="stretch", hide_index=True)
