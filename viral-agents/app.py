@@ -119,7 +119,7 @@ with st.sidebar:
 
     st.write("**Models**")
     st.write("- Scout / video / judge: `%s`" % (os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"))
-    st.write("- Writer: `%s`" % (os.getenv("GEMINI_WRITER_MODEL") or "gemini-pro-latest"))
+    st.write("- Writer: `%s`" % (os.getenv("GEMINI_WRITER_MODEL") or "gemini-2.5-pro"))
 
     st.divider()
     st.header("The agents")

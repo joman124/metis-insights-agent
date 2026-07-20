@@ -19,8 +19,8 @@ import os
 from voice_profile import VOICE_SYSTEM_PROMPT, ANTI_AI_TELL_PROMPT, CONTENT_RULES
 from guardrails import draft_with_guardrails
 
-MODEL = os.getenv("GEMINI_WRITER_MODEL", "gemini-pro-latest")
-JUDGE_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+MODEL = os.getenv("GEMINI_WRITER_MODEL", "gemini-2.5-pro")
+JUDGE_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 SYSTEM_INSTRUCTION = VOICE_SYSTEM_PROMPT + "\n\n" + ANTI_AI_TELL_PROMPT
 DRAFTS_DOC = "Insights Drafts.docx"
 ESSAY_RULES = CONTENT_RULES["essay"]

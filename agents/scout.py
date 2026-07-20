@@ -25,7 +25,7 @@ from google.genai import types
 from gemini_client import generate
 from pillars import PILLAR_NAMES
 
-MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 FORMATS = ["essay", "field_note"]
 LOOKBACK_DAYS = 90

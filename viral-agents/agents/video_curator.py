@@ -34,8 +34,8 @@ from metis_voice_profile import (VOICE_SYSTEM_PROMPT, ANTI_AI_TELL_PROMPT,
 from guardrails import draft_with_guardrails
 import engagement
 
-MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
-WRITER_MODEL = os.getenv("GEMINI_WRITER_MODEL", "gemini-pro-latest")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+WRITER_MODEL = os.getenv("GEMINI_WRITER_MODEL", "gemini-2.5-pro")
 SYSTEM_INSTRUCTION = VOICE_SYSTEM_PROMPT + "\n\n" + ANTI_AI_TELL_PROMPT
 
 CAPTION_RULES = PLATFORM_RULES["video_caption"]
