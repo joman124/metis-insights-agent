@@ -1,0 +1,13 @@
+# Streamlit theme for the Metis viral dashboard.
+# base = "dark" forces a dark UI regardless of the browser/OS setting, so the
+# dashboard is easy on the eyes even in a bright room. Colors are a restrained,
+# executive palette to match the Metis brand (deep slate ground, muted bronze
+# accent), not the default neon Streamlit red.
+
+[theme]
+base = "dark"
+primaryColor = "#C9A227"
+backgroundColor = "#0F1216"
+secondaryBackgroundColor = "#191D23"
+textColor = "#E8E8E6"
+font = "sans serif"
