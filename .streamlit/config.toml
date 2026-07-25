@@ -1,0 +1,7 @@
+# Fixed port for the essays/field-notes studio (streamlit run app.py from the
+# repo root). Pinning it stops the app from drifting onto whatever port is
+# free and colliding with other Streamlit apps on this machine.
+# The viral dashboard in viral-agents/ is pinned to 8502.
+
+[server]
+port = 8501

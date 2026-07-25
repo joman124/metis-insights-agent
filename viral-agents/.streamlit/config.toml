@@ -4,6 +4,11 @@
 # executive palette to match the Metis brand (deep slate ground, muted bronze
 # accent), not the default neon Streamlit red.
 
+# Fixed port so the viral dashboard never fights the essays studio (8501)
+# or anything else for a port.
+[server]
+port = 8502
+
 [theme]
 base = "dark"
 primaryColor = "#C9A227"
