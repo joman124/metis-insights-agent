@@ -1,0 +1,44 @@
+name: tests
+
+# Must live in .github/workflows/ at the REPOSITORY ROOT. This file previously
+# sat in viral-agents/.github/workflows/, where GitHub never reads it, so it
+# never ran once.
+
+on:
+  push:
+    branches: [ main, "claude/**" ]
+  pull_request:
+
+jobs:
+  unittest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install deps for both apps
+        # The studio and the queue tests drive the real Streamlit apps via
+        # AppTest, so the full runtime deps are needed -- not just dotenv.
+        run: |
+          pip install -r requirements.txt
+          pip install -r viral-agents/requirements.txt
+
+      - name: Studio tests (module isolation, both pages)
+        # Guards the segfault where purging in-repo venv modules reloaded
+        # Streamlit's C extensions mid-render.
+        run: python test_studio.py
+
+      - name: Viral agent tests
+        working-directory: viral-agents
+        run: |
+          python -m unittest test_agents -v
+          python -m unittest test_system -v
+
+      - name: Edit-learning tests
+        # No API key required: the distiller's model call is stubbed.
+        working-directory: viral-agents
+        run: |
+          python test_edit_lessons.py
+          python test_edit_queue.py

@@ -13,16 +13,26 @@ rewritten for Metis. See `PROJECT_BRIEF.md`, `ARCHITECTURE.md`, and
 
 ## Setup
 
+One virtualenv at the repo root serves **both** apps -- the studio runs them in
+a single process, and `viral-agents/` deliberately has no venv of its own (a
+second copy only caused version drift).
+
 ```bash
 python -m venv .venv
 # Windows:  .venv\Scripts\activate
 # macOS/Linux:  source .venv/bin/activate
 pip install -r requirements.txt
+pip install -r viral-agents/requirements.txt
 
 copy .env.example .env        # Windows  (cp on macOS/Linux)
 # then edit .env: paste the SAME GEMINI_API_KEY used by the After Work project
 python check_setup.py         # confirms the key works, lists callable models
 ```
+
+Each app loads the `.env` beside it, so `viral-agents/.env` is separate and
+needs the same key. Note that `check_setup.py` only proves a key can *list*
+models; a key can list fine and still fail every generate call with
+`403 PERMISSION_DENIED` if its project has been denied access.
 
 ## Run it
 

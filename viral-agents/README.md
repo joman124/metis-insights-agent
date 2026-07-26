@@ -84,15 +84,32 @@ platform terms.
 
 ## Setup
 
-1. Create and activate a virtual environment, then install deps:
-   ```
-   python -m venv .venv
-   .venv\Scripts\activate      (Windows)   |   source .venv/bin/activate  (mac/Linux)
-   pip install -r requirements.txt
-   ```
-2. Copy `.env.example` to `.env` and fill in `GEMINI_API_KEY`.
-   Run `python check_setup.py` to confirm the key and see available models.
-3. Leave `LINKEDIN_DRY_RUN=true` until you have a LinkedIn token (below).
+**One virtualenv serves both apps, and it lives in the parent folder.** This
+folder used to keep its own copy, which only produced version drift (the studio
+ran one Streamlit build, a standalone run here ran another). Set it up once from
+the repo root:
+
+```
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m pip install -r viral-agents\requirements.txt
+```
+
+Then from this folder, call it explicitly (no activation needed):
+
+```
+..\.venv\Scripts\python.exe -m streamlit run app.py     # or run_app.bat
+..\.venv\Scripts\python.exe check_setup.py              # confirm the key
+```
+
+Copy `.env.example` to `.env` and fill in `GEMINI_API_KEY`. This folder keeps
+its **own** `.env` (each app loads the one beside it), so a key change has to be
+made in both files -- and `check_setup.py` only proves a key can *list* models,
+not that it can generate. If drafting fails with `403 PERMISSION_DENIED` while
+listing works, the key's project has been denied access: use the working key
+from the root `.env`.
+
+Leave `LINKEDIN_DRY_RUN=true` until you have a LinkedIn token (below).
 
 ## Going live on LinkedIn (one-time, manual)
 
