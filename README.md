@@ -26,9 +26,44 @@ python check_setup.py         # confirms the key works, lists callable models
 
 ## Run it
 
+The normal way in is the **Metis Content Studio**: one dark dashboard with both
+halves of the operation behind a sidebar you can switch between freely.
+
 ```bash
-# The UI (recommended): ask the agent, review drafts, promote to the site
-streamlit run app.py
+streamlit run dashboard.py       # or double-click "Metis Content Studio.bat"
+```
+
+| Sidebar page | What it does | How content goes out |
+| --- | --- | --- |
+| **Viral Content** | Hot-topic LinkedIn posts + Substack Notes (Create / Review) | Edit in the Review queue, then **Approve + post** publishes to the Metis LinkedIn page (honors `LINKEDIN_DRY_RUN`) |
+| **Essays & Field Notes** | Long-form pieces for the website | Edit in the Drafts tab, then **Publish to site** writes the site data file + article page |
+
+Both pages are edit-then-publish: whatever is in the box is what goes out.
+
+The studio runs the two apps in one process, so it lives at the repo root and
+each page keeps its own folder, `.env`, drafts, and memory. Either app still
+runs standalone (`streamlit run app.py` here, or in `viral-agents/`).
+
+### The system learns from your edits
+
+Editing a draft before you publish it is the most honest feedback the writers
+get, so it is captured (`edit_lessons.py`):
+
+1. Save or publish an edited draft -> the before/after pair is recorded in
+   `memory/edit_history.json`. Instant, no API call.
+2. At the next draft run, those pairs are distilled into short standing
+   corrections in `memory/edit_lessons.json` (one cheap Flash call).
+3. Every later draft prompt carries those corrections, most-repeated first.
+
+See what has been learned in the **"What the writers have learned from your
+edits"** panel on either page. Corrections are style and structure rules, never
+topic content, and each page learns separately -- a LinkedIn hook rule should
+not reshape a quarterly essay. Delete a line from `edit_lessons.json` to drop
+a lesson; the loop degrades to silence if anything fails, and never blocks a
+save, a post, or a draft.
+
+```bash
+streamlit run app.py             # just the essays/field-notes app
 
 # Or drive agents directly:
 python -m agents.scout "return-to-office mandates"      # trending briefing

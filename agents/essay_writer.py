@@ -18,6 +18,7 @@ import os
 
 from voice_profile import VOICE_SYSTEM_PROMPT, ANTI_AI_TELL_PROMPT, CONTENT_RULES
 from guardrails import draft_with_guardrails
+import edit_lessons
 
 MODEL = os.getenv("GEMINI_WRITER_MODEL", "gemini-pro-latest")
 JUDGE_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
@@ -35,7 +36,7 @@ def _build_essay_prompt(topic: str, pillar: str, feedback: str = None) -> str:
 
 PILLAR (the lens this piece works within): {pillar}
 STARTING ANGLE: {topic}
-{revision_note}
+{revision_note}{edit_lessons.lessons_prompt()}
 Develop the angle into a real argument. Open on a specific pattern or
 observation from executive work, name the mechanism underneath it, and follow
 it to an earned conclusion. Use one concrete example a leader would recognize.

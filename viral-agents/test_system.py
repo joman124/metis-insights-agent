@@ -13,6 +13,7 @@ import tempfile
 import unittest
 from datetime import datetime, timezone, timedelta
 
+import edit_lessons
 import posts_ledger
 import posting_policy
 import safety
@@ -130,14 +131,24 @@ class TestAnalytics(unittest.TestCase):
 
 class TestReviewEdit(unittest.TestCase):
     """review.edit_item lets a human revise a queued draft before it posts.
-    review works off the default ledger path, so we point it at a temp file."""
+    review works off the default ledger path, so we point it at a temp file.
+
+    An edit also records a before/after pair for the learning loop, so the
+    edit-history and lesson files are redirected too -- otherwise these tests
+    teach the real writers from fake test text."""
     def setUp(self):
         self._saved = posts_ledger.LEDGER_PATH
+        self._saved_history = edit_lessons.HISTORY_PATH
+        self._saved_lessons = edit_lessons.LESSONS_PATH
         self.dir = tempfile.mkdtemp()
         posts_ledger.LEDGER_PATH = os.path.join(self.dir, "posts.json")
+        edit_lessons.HISTORY_PATH = os.path.join(self.dir, "edit_history.json")
+        edit_lessons.LESSONS_PATH = os.path.join(self.dir, "edit_lessons.json")
 
     def tearDown(self):
         posts_ledger.LEDGER_PATH = self._saved
+        edit_lessons.HISTORY_PATH = self._saved_history
+        edit_lessons.LESSONS_PATH = self._saved_lessons
 
     def test_edit_updates_queued_text(self):
         posts_ledger.add("AI pilots stall", "old body", "linkedin")

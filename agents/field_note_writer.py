@@ -16,6 +16,7 @@ import os
 
 from voice_profile import VOICE_SYSTEM_PROMPT, ANTI_AI_TELL_PROMPT, CONTENT_RULES
 from guardrails import draft_with_guardrails
+import edit_lessons
 
 MODEL = os.getenv("GEMINI_WRITER_MODEL", "gemini-pro-latest")
 JUDGE_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
@@ -33,7 +34,7 @@ def _build_note_prompt(topic: str, pillar: str, feedback: str = None) -> str:
 
 PILLAR (the lens this note works within): {pillar}
 STARTING ANGLE: {topic}
-{revision_note}
+{revision_note}{edit_lessons.lessons_prompt()}
 A field note makes one observation well. Name a single pattern from executive
 or organizational work, say the mechanism underneath it, and stop. No throat-
 clearing, no windup.

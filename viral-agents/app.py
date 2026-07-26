@@ -300,6 +300,7 @@ def page_review():
     )
 
     with tab_queue:
+        import edit_lessons
         import posts_ledger
         import review
         queued = posts_ledger.by_status("queued")
@@ -367,6 +368,24 @@ def page_review():
                     if st.button("Reject", key="rj-%s" % r["id"], width="stretch"):
                         review.reject_item(r["id"])
                         st.rerun()
+
+        learned = edit_lessons.lessons()
+        with st.expander(
+                "What the writers have learned from your edits (%d standing "
+                "correction(s))" % len(learned)):
+            if learned:
+                st.caption(
+                    "Every time you edit a draft before approving it, the "
+                    "system compares your version with the agent's and keeps "
+                    "the durable rules. These are injected into every future "
+                    "draft, most-repeated first.")
+                for l in learned:
+                    st.markdown("- " + l)
+            else:
+                st.caption(
+                    "Nothing yet. Edit a draft before approving it and the "
+                    "system will distill your corrections into standing rules "
+                    "at the next draft run.")
 
     with tab_drafts:
         st.caption("Everything the agents have saved for review.")
@@ -449,10 +468,15 @@ def page_review():
 # --------------------------------------------------------------------------
 st.set_page_config(page_title="Metis - Viral Content Agents", layout="wide")
 
+# Inside the unified Content Studio (dashboard.py at the repo root), the studio
+# owns the one-and-only st.navigation; starting a second one here would crash.
+# The studio sets METIS_STUDIO=1, and we fall back to the sidebar page switch.
+STUDIO_MODE = os.environ.get("METIS_STUDIO") == "1"
+
 # st.navigation/st.Page (Streamlit 1.36+) gives a real multi-page sidebar. The
 # app pins Streamlit well past that, but we guard anyway so an older install
 # degrades to a radio-based page switch instead of crashing on John's machine.
-if hasattr(st, "navigation") and hasattr(st, "Page"):
+if not STUDIO_MODE and hasattr(st, "navigation") and hasattr(st, "Page"):
     nav = st.navigation([
         st.Page(page_create, title="Create", icon=":material/bolt:", default=True),
         st.Page(page_review, title="Review", icon=":material/inbox:"),
@@ -460,7 +484,7 @@ if hasattr(st, "navigation") and hasattr(st, "Page"):
     render_sidebar()
     nav.run()
 else:
-    render_sidebar()
     _pages = {"Create": page_create, "Review": page_review}
-    _choice = st.sidebar.radio("Page", list(_pages.keys()))
+    _choice = st.sidebar.radio("Viral page", list(_pages.keys()))
+    render_sidebar()
     _pages[_choice]()

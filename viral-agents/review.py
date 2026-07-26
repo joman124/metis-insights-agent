@@ -72,8 +72,21 @@ def edit_item(record_id: str, new_text: str) -> dict:
         return {"ok": False, "msg": "Cannot save an empty post."}
     if text == (record.get("text") or "").strip():
         return {"ok": True, "unchanged": True, "msg": f"{record_id} unchanged."}
+    # The gap between the agent's draft and John's version is feedback worth
+    # keeping: record the pair so the writers learn from it on the next draft
+    # (see edit_lessons.py). Recording is instant and must never block a save.
+    try:
+        import edit_lessons
+        edit_lessons.record_edit(
+            record.get("text") or "", text,
+            context=f"{record.get('platform') or 'linkedin'} post about: "
+                    f"{record.get('topic') or ''}")
+    except Exception:
+        pass
     posts_ledger.update(record_id, text=text)
-    return {"ok": True, "msg": f"{record_id} updated."}
+    return {"ok": True,
+            "msg": f"{record_id} updated. Edit recorded -- the writers learn "
+                   f"from it on the next draft."}
 
 
 def reject_item(record_id: str) -> dict:

@@ -37,6 +37,7 @@ import time
 from metis_voice_profile import (VOICE_SYSTEM_PROMPT, ANTI_AI_TELL_PROMPT,
                                   PLATFORM_RULES)
 from guardrails import draft_with_guardrails, CALL_PACING_SECONDS
+import edit_lessons
 import engagement
 
 MODEL = os.getenv("GEMINI_WRITER_MODEL", "gemini-pro-latest")
@@ -58,7 +59,7 @@ def _build_viral_linkedin_prompt(topic: str, feedback: str = None) -> str:
 reacting to this hot topic:
 
 TOPIC: {topic}
-{revision_note}
+{revision_note}{edit_lessons.lessons_prompt()}
 This is a fast reaction meant to stop a senior leader's scroll and pull
 comments. Take a real, specific advisory position on what this means for how
 companies lead, decide, or adopt AI. Not a summary of the news. A view.
@@ -85,7 +86,7 @@ def _build_note_prompt(topic: str, feedback: str = None) -> str:
     return f"""Write a Substack Note for Metis reacting to this hot topic:
 
 TOPIC: {topic}
-{revision_note}
+{revision_note}{edit_lessons.lessons_prompt()}
 A Note is a single quick thought, the length of a good text message. Sharp,
 specific, in Metis's measured voice. One idea, stated once, well.
 

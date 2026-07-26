@@ -4,9 +4,9 @@ REM  Metis Content Studio -- both agents on one page.
 REM
 REM  Double-click this file. A black console window opens, and after a
 REM  few seconds a browser tab opens at http://localhost:8501 showing a
-REM  sidebar with two entries:
-REM      Insights Engine   (essays + field notes for the website)
-REM      Viral Agent       (LinkedIn posts + approval queue)
+REM  sidebar with two entries you can switch between freely:
+REM      Viral Content         (LinkedIn posts + Substack notes queue)
+REM      Essays & Field Notes  (long-form pieces for the website)
 REM
 REM  To STOP the app: close this black console window (or press Ctrl+C
 REM  in it). Closing just the browser tab does NOT stop it -- the
@@ -29,10 +29,15 @@ echo Starting Metis Content Studio... a browser tab will open shortly.
 echo Leave this window open while you use the app. Close it to stop.
 echo.
 
-REM Use "python -m streamlit" -- the bare "streamlit" command is only on
-REM PATH inside a virtualenv, but "python -m streamlit" always works as
-REM long as Streamlit is installed for this Python.
-python -m streamlit run dashboard.py
+REM Prefer the project's virtualenv, which is where the dependencies are
+REM actually installed; fall back to whatever "python" is on PATH.
+REM Always "python -m streamlit" -- the bare "streamlit" command only
+REM exists on PATH inside an activated virtualenv.
+if exist ".venv\Scripts\python.exe" (
+    ".venv\Scripts\python.exe" -m streamlit run dashboard.py
+) else (
+    python -m streamlit run dashboard.py
+)
 
 REM If Python itself is missing you will see an error above; press a key
 REM to keep this window open so you can read it.

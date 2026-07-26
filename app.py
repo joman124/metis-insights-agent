@@ -178,6 +178,17 @@ def render_draft_column(entries, fmt, label):
                             title=(title_override.strip() or None),
                             featured=featured if fmt == "essay" else None)
                         promoted.add(heading)
+                        # John's edits are feedback: keep the before/after pair
+                        # so the writers learn from it on the next draft (see
+                        # edit_lessons.py). Never blocks publishing.
+                        if edited_body.strip() != e["body"].strip():
+                            try:
+                                import edit_lessons
+                                edit_lessons.record_edit(
+                                    e["body"], edited_body,
+                                    context="%s for the Metis site" % label)
+                            except Exception:
+                                pass
                         where = "metis-website checkout" if result["is_site"] \
                             else "./site_output (no site checkout found)"
                         st.success(
@@ -324,9 +335,10 @@ with tab_plan:
 
 with tab_drafts:
     st.caption(
-        "Review a draft, pick its pillar, then promote it. Promoting writes "
-        "the site data file and a standalone article page into your "
-        "metis-website checkout; commit and push to publish.")
+        "Review a draft, edit it freely, pick its pillar, then promote it. "
+        "Promoting writes the site data file and a standalone article page "
+        "into your metis-website checkout; commit and push to publish. Your "
+        "edits are recorded so the writers learn from them.")
     entries = load_drafts(DRAFTS_DOC)
     left, right = st.columns(2)
     with left:
@@ -335,6 +347,25 @@ with tab_drafts:
     with right:
         st.markdown("### Field notes")
         render_draft_column(entries, "field_note", "Field note")
+
+    import edit_lessons
+    learned = edit_lessons.lessons()
+    with st.expander(
+            "What the writers have learned from your edits (%d standing "
+            "correction(s))" % len(learned)):
+        if learned:
+            st.caption(
+                "Every time you edit a draft before publishing, the system "
+                "compares your version with the agent's and keeps the durable "
+                "rules. These are injected into every future draft, "
+                "most-repeated first.")
+            for l in learned:
+                st.markdown("- " + l)
+        else:
+            st.caption(
+                "Nothing yet. Edit a draft before publishing it and the "
+                "system will distill your corrections into standing rules at "
+                "the next draft run.")
 
 with tab_trace:
     trace = load_trace()

@@ -8,6 +8,11 @@ assert the new text is persisted to the ledger and a confirmation is shown and
 stays on screen. This guards the bug where a save silently discarded the edit
 (or hid its confirmation behind an immediate rerun).
 
+The approval queue lives on the Review page, so the test must switch pages
+first. AppTest cannot drive st.navigation's callable pages, so it sets
+METIS_STUDIO=1 -- the same flag the unified dashboard sets -- which puts the app
+on its sidebar-radio page switch, and selects "Review" through that.
+
 Run:  python test_edit_queue.py
 """
 
@@ -15,6 +20,7 @@ import json
 import os
 import tempfile
 
+import edit_lessons
 import posts_ledger
 
 
@@ -24,6 +30,10 @@ def test_edit_persists_and_confirms():
     # Isolate the ledger to a temp file so the test never touches real data.
     tmp = tempfile.mkdtemp()
     ledger = os.path.join(tmp, "posts.json")
+    # Same for the edit-learning files: a save records the before/after pair
+    # (edit_lessons.record_edit), and the test must not pollute real memory.
+    edit_lessons.HISTORY_PATH = os.path.join(tmp, "edit_history.json")
+    edit_lessons.LESSONS_PATH = os.path.join(tmp, "edit_lessons.json")
     original = "Most AI pilots die in the gap between demo and deploy."
     posts_ledger.save([], path=ledger)
     seeded = posts_ledger.add(
@@ -34,7 +44,11 @@ def test_edit_persists_and_confirms():
     # Point the app's module-level LEDGER_PATH at the temp file for this run.
     posts_ledger.LEDGER_PATH = ledger
 
+    # Radio-based page switch (see module docstring), then open Review.
+    os.environ["METIS_STUDIO"] = "1"
     at = AppTest(script_path="app.py", default_timeout=60).run()
+    assert not at.exception, at.exception
+    at.radio[0].set_value("Review").run()
     assert not at.exception, at.exception
 
     new_text = "Pilots stall in the deploy gap, not the demo. Fix the operating model."
@@ -53,7 +67,16 @@ def test_edit_persists_and_confirms():
     # 3. The edit box still shows the new text (item did not vanish/collapse).
     assert at.text_area(key="edit-%s" % rid).value == new_text
 
-    print("[PASS] edit persists, confirms, and stays visible:", repr(new_text))
+    # 4. The before/after pair was recorded for the learning loop (no API
+    # call happens at save time; distillation is deferred to draft time).
+    recorded = json.load(open(edit_lessons.HISTORY_PATH, encoding="utf-8"))
+    assert len(recorded) == 1, recorded
+    assert recorded[0]["original"] == original
+    assert recorded[0]["edited"] == new_text
+    assert recorded[0]["distilled"] is False
+
+    print("[PASS] edit persists, confirms, stays visible, and is recorded "
+          "for learning:", repr(new_text))
 
 
 if __name__ == "__main__":

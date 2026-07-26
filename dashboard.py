@@ -3,10 +3,14 @@
 Metis Content Studio -- one page, both agents.
 
 A single Streamlit entry point that puts the two Metis apps behind one sidebar
-nav:
+nav (dark theme via .streamlit/config.toml):
 
-  - Insights Engine   (this repo root: essays + field notes for the website)
-  - Viral Agent       (viral-agents/: LinkedIn posts + Substack notes queue)
+  - Viral Content         (viral-agents/: LinkedIn posts + Substack notes queue)
+  - Essays & Field Notes  (this repo root: essays + field notes for the website)
+
+METIS_STUDIO=1 is set for the sub-apps so the viral app knows it is running
+inside this studio and must not start its own st.navigation (only one
+navigation is allowed per session; it falls back to a sidebar page switch).
 
 They are two separate applications that happen to share module names
 (``agents``, ``guardrails``, ``gemini_client``, ...). Rather than merge their
@@ -33,16 +37,40 @@ import streamlit as st
 
 st.set_page_config(page_title="Metis Content Studio", layout="wide")
 
+# Tell the sub-apps they are running inside the studio (see module docstring).
+os.environ["METIS_STUDIO"] = "1"
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 INSIGHTS_DIR = ROOT
 VIRAL_DIR = os.path.join(ROOT, "viral-agents")
 _THIS = os.path.abspath(__file__)
 
 
+# Directory names that hold installed third-party packages. Both apps keep a
+# virtualenv *inside* the repo (.venv/, venv/), so "lives under this repo" is
+# not enough to identify an app module -- see _is_app_module.
+_VENDOR_PARTS = (".venv", "venv", "site-packages", "dist-packages")
+
+
+def _is_app_module(path):
+    """True only for the apps' own source files.
+
+    Must exclude anything from an in-repo virtualenv. Purging installed
+    packages (streamlit itself, and its C extensions) and re-importing them
+    mid-render gives the sub-app a second, context-less copy of Streamlit and
+    segfaults the process -- that is what this guard prevents.
+    """
+    if not path.startswith(ROOT + os.sep):
+        return False
+    parts = set(path[len(ROOT) + 1:].split(os.sep))
+    return not (parts & set(_VENDOR_PARTS))
+
+
 def _purge_app_modules():
-    """Drop every already-imported module whose file lives under this repo
-    (except this launcher), so the next app's identically-named modules load
-    fresh instead of returning the other app's cached copy."""
+    """Drop every already-imported module that belongs to either app (but not
+    this launcher, and never an installed package), so the next app's
+    identically-named modules load fresh instead of returning the other app's
+    cached copy."""
     for name, mod in list(sys.modules.items()):
         f = getattr(mod, "__file__", None)
         if not f:
@@ -50,7 +78,7 @@ def _purge_app_modules():
         f = os.path.abspath(f)
         if f == _THIS:
             continue
-        if f.startswith(ROOT + os.sep):
+        if _is_app_module(f):
             del sys.modules[name]
 
 
@@ -84,7 +112,9 @@ def viral_page():
 
 
 nav = st.navigation([
-    st.Page(insights_page, title="Insights Engine", icon=":material/edit_note:"),
-    st.Page(viral_page, title="Viral Agent", icon=":material/bolt:"),
+    st.Page(viral_page, title="Viral Content", icon=":material/bolt:",
+            default=True),
+    st.Page(insights_page, title="Essays & Field Notes",
+            icon=":material/edit_note:"),
 ])
 nav.run()
