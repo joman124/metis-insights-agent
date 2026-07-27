@@ -70,9 +70,25 @@ filter-chip `data-topic` value. Do not redefine the pillar list anywhere else.
 There is no CMS. `content_publisher.promote_to_site()` writes an entry into
 `content/insights-data.json` and generates `insights/<slug>.html` inside a
 local metis-website checkout (found via `METIS_SITE_DIR`, else
-`../metis-website`, else `./site_output/`). The Insights page renders that
-JSON via `site/insights-loader.js`. Committing and pushing those files to
-metis-website is a **deliberate manual step** -- this tool never runs git.
+`../metis-website`, else `./site_output/`). `site/insights-loader.js` in
+metis-website renders that JSON into the Insights page, per section, keeping
+the designed placeholders for any section with no real content yet.
+
+**The Drafts tab pushes.** As of 2026-07-26 the UI has two buttons: *Publish +
+push live* (write, commit, push -- metis-website auto-deploys to metisag.com
+via Vercel, so this is public in ~2 minutes) and *Write files only* (stop
+before pushing). `site_git.py` owns the git side. Earlier docs said this tool
+never runs git; that changed at John's request, because he does not work in
+git and staged files were sitting unpublished. The safety rules in
+`site_git.py` are load-bearing -- stage only the generated files by explicit
+path, never prompt, never raise, rebase-and-retry once on a rejected push.
+
+**Two traps that cost a session:** the checkout is at
+`C:\Projects\Metis Advisory Design System`, NOT `../metis-website`, so
+`METIS_SITE_DIR` must be set or everything silently lands in `site_output/`;
+and the Insights filter chips are the five pillar keys from `pillars.py`
+(`self-mastery`, `strategy`, ...), not the generic demo topics the design
+shipped with.
 
 ## Current state
 

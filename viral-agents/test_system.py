@@ -63,6 +63,28 @@ class TestPostingPolicy(unittest.TestCase):
         gate = posting_policy.can_post_now(now=now, max_per_day=3, ledger=ledger)
         self.assertFalse(gate["allowed"])
 
+    def test_cadence_limit_does_not_reset_at_utc_midnight(self):
+        """The limit is a rolling 24h window. Counting by calendar date let
+        three posts before midnight and three after both through -- a six-post
+        burst in a couple of hours."""
+        now = datetime(2026, 7, 27, 0, 30, tzinfo=timezone.utc)
+        ledger = [{"status": "posted",
+                   "posted_at": (now - timedelta(hours=h)).isoformat()}
+                  for h in (1, 2, 3)]  # all on the previous UTC date
+        gate = posting_policy.can_post_now(now=now, max_per_day=3, min_hours=0,
+                                           ledger=ledger)
+        self.assertFalse(gate["allowed"], gate)
+        self.assertIn("24h", gate["reason"])
+
+    def test_cadence_forgets_posts_older_than_a_day(self):
+        now = datetime.now(timezone.utc)
+        ledger = [{"status": "posted",
+                   "posted_at": (now - timedelta(hours=30)).isoformat()}
+                  for _ in range(5)]
+        gate = posting_policy.can_post_now(now=now, max_per_day=3, min_hours=3,
+                                           ledger=ledger)
+        self.assertTrue(gate["allowed"], gate)
+
     def test_cadence_min_spacing(self):
         now = datetime.now(timezone.utc)
         ledger = [{"status": "posted", "posted_at": (now - timedelta(minutes=30)).isoformat()}]

@@ -82,10 +82,17 @@ def can_post_now(now=None, max_per_day: int = MAX_PER_DAY,
         if t:
             posted_times.append(t)
 
-    today = [t for t in posted_times if t.date() == now.date()]
-    if len(today) >= max_per_day:
+    # A rolling 24 hours, not the UTC calendar day. Counting by calendar date
+    # let the limit reset at midnight UTC, so three posts at 23:00 and three
+    # more at 00:30 both passed -- six posts in ninety minutes, exactly the
+    # botty burst this gate exists to prevent. (It also made the cadence test
+    # pass or fail depending on the time of day it ran.)
+    day_ago = now - timedelta(hours=24)
+    recent = [t for t in posted_times if t >= day_ago]
+    if len(recent) >= max_per_day:
         return {"allowed": False,
-                "reason": f"already posted {len(today)} today (max {max_per_day})"}
+                "reason": f"already posted {len(recent)} in the last 24h "
+                          f"(max {max_per_day})"}
 
     if posted_times:
         last = max(posted_times)

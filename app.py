@@ -119,6 +119,82 @@ def has_api_key():
     return bool(os.getenv("GEMINI_API_KEY"))
 
 
+def _publish_draft(entry, heading, label, fmt, pillar, body, title_override,
+                   featured, push_live, promoted):
+    """Promote one draft into site content, and optionally push it live.
+
+    Split out of the Drafts tab so both buttons share exactly one path: the
+    only difference between "write the files" and "put it on the internet" is
+    the push step at the end. Writing always happens first and is reported on
+    its own, so a failed push never looks like a lost draft."""
+    from content_publisher import promote_to_site
+
+    with st.spinner("Writing site data + article page..."):
+        try:
+            result = promote_to_site(
+                body=body, fmt=fmt, pillar=pillar,
+                title=(title_override.strip() or None), featured=featured)
+        except SystemExit as exc:
+            st.error(str(exc))
+            return
+        except Exception as exc:  # noqa: BLE001
+            st.error("Publish failed: %s" % exc)
+            return
+
+    promoted.add(heading)
+
+    # John's edits are feedback: keep the before/after pair so the writers
+    # learn from it on the next draft (see edit_lessons.py). Never blocks
+    # publishing.
+    if body.strip() != entry["body"].strip():
+        try:
+            import edit_lessons
+            edit_lessons.record_edit(entry["body"], body,
+                                     context="%s for the Metis site" % label)
+        except Exception:  # noqa: BLE001
+            pass
+
+    title = result["entry"]["title"]
+    where = "the metis-website folder" if result["is_site"] \
+        else "./site_output (no site checkout found)"
+    st.success("Wrote \"%s\" into %s." % (title, where))
+    st.caption("- data: %s\n- page: %s"
+               % (result["data_path"], result["article_path"]))
+
+    if not push_live:
+        st.info("Not pushed, so it is not public yet. Use **Publish + push "
+                "live** when you are ready, or ask Claude to push it.")
+        return
+
+    if not result["is_site"]:
+        st.error(
+            "Cannot push: no metis-website checkout was found, so the files "
+            "went to a local folder instead. Set METIS_SITE_DIR in .env to the "
+            "website folder.")
+        return
+
+    import site_git
+    with st.spinner("Committing and pushing to the live site..."):
+        pushed = site_git.publish_files(
+            paths=[result["data_path"], result["article_path"]],
+            message="Publish: %s" % title,
+            site_dir=result["site_dir"])
+
+    if not pushed["ok"]:
+        st.error(pushed["msg"])
+        return
+    if not pushed["pushed"]:
+        st.warning(pushed["msg"])
+        return
+
+    st.success(pushed["msg"])
+    slug = result["entry"].get("slug", "")
+    if slug:
+        base = (os.getenv("METIS_SITE_URL") or "https://www.metisag.com").rstrip("/")
+        st.markdown("Live shortly at: [%s/insights/%s](%s/insights/%s)"
+                    % (base, slug, base, slug))
+
+
 def render_draft_column(entries, fmt, label):
     """One Drafts-tab column of drafts of a given format, each in an expander
     with a 'Promote to site' control that runs content_publisher.promote_to_site
@@ -168,39 +244,30 @@ def render_draft_column(entries, fmt, label):
                 featured = st.checkbox(
                     "Set as the featured essay", value=True,
                     key="feat-%s-%d" % (fmt, i))
-            if st.button("Publish to site", key="promote-%s-%d" % (fmt, i),
-                         type="primary", disabled=not has_api_key()):
-                from content_publisher import promote_to_site
-                with st.spinner("Writing site data + article page..."):
-                    try:
-                        result = promote_to_site(
-                            body=edited_body, fmt=fmt, pillar=pillar,
-                            title=(title_override.strip() or None),
-                            featured=featured if fmt == "essay" else None)
-                        promoted.add(heading)
-                        # John's edits are feedback: keep the before/after pair
-                        # so the writers learn from it on the next draft (see
-                        # edit_lessons.py). Never blocks publishing.
-                        if edited_body.strip() != e["body"].strip():
-                            try:
-                                import edit_lessons
-                                edit_lessons.record_edit(
-                                    e["body"], edited_body,
-                                    context="%s for the Metis site" % label)
-                            except Exception:
-                                pass
-                        where = "metis-website checkout" if result["is_site"] \
-                            else "./site_output (no site checkout found)"
-                        st.success(
-                            "Promoted \"%s\".\nWrote to %s.\n- data: %s\n- page: %s"
-                            % (result["entry"]["title"], where,
-                               result["data_path"], result["article_path"]))
-                        st.caption("Commit and push those files to metis-website "
-                                   "to publish.")
-                    except SystemExit as exc:
-                        st.error(str(exc))
-                    except Exception as exc:  # noqa: BLE001
-                        st.error("Promote failed: %s" % exc)
+            # Two ways out: all the way live, or write the files and stop so
+            # the change can be looked at before it reaches the public site.
+            go_live, stage_only = st.columns(2)
+            with go_live:
+                live_clicked = st.button(
+                    "Publish + push live", key="live-%s-%d" % (fmt, i),
+                    type="primary", width="stretch", disabled=not has_api_key(),
+                    help="Writes the site files, commits them, and pushes. The "
+                         "site rebuilds itself, so the piece is public within a "
+                         "couple of minutes.")
+            with stage_only:
+                stage_clicked = st.button(
+                    "Write files only", key="promote-%s-%d" % (fmt, i),
+                    width="stretch", disabled=not has_api_key(),
+                    help="Writes the site files into the website folder but "
+                         "does not push, so nothing goes public yet.")
+
+            if live_clicked or stage_clicked:
+                _publish_draft(
+                    entry=e, heading=heading, label=label, fmt=fmt,
+                    pillar=pillar, body=edited_body,
+                    title_override=title_override,
+                    featured=featured if fmt == "essay" else None,
+                    push_live=bool(live_clicked), promoted=promoted)
 
 
 # --------------------------------------------------------------------------
@@ -335,10 +402,10 @@ with tab_plan:
 
 with tab_drafts:
     st.caption(
-        "Review a draft, edit it freely, pick its pillar, then promote it. "
-        "Promoting writes the site data file and a standalone article page "
-        "into your metis-website checkout; commit and push to publish. Your "
-        "edits are recorded so the writers learn from them.")
+        "Review a draft, edit it freely, pick its pillar, then publish it. "
+        "**Publish + push live** writes the site files and pushes them, so the "
+        "piece is public within a couple of minutes; **Write files only** stops "
+        "before pushing. Your edits are recorded so the writers learn from them.")
     entries = load_drafts(DRAFTS_DOC)
     left, right = st.columns(2)
     with left:

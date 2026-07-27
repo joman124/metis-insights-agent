@@ -46,7 +46,7 @@ streamlit run dashboard.py       # or double-click "Metis Content Studio.bat"
 | Sidebar page | What it does | How content goes out |
 | --- | --- | --- |
 | **Viral Content** | Hot-topic LinkedIn posts + Substack Notes (Create / Review) | Edit in the Review queue, then **Approve + post** publishes to the Metis LinkedIn page (honors `LINKEDIN_DRY_RUN`) |
-| **Essays & Field Notes** | Long-form pieces for the website | Edit in the Drafts tab, then **Publish to site** writes the site data file + article page |
+| **Essays & Field Notes** | Long-form pieces for the website | Edit in the Drafts tab, then **Publish + push live** writes the site files, commits, and pushes -- the site rebuilds itself, so the piece is public in a couple of minutes. **Write files only** stops before pushing. |
 
 Both pages are edit-then-publish: whatever is in the box is what goes out.
 
@@ -90,19 +90,29 @@ Drafts are written to `Insights Drafts.docx` for review. Promoting a draft
 
 ## Publishing to the site
 
-By default the publisher looks for a metis-website checkout beside this repo
-(`../metis-website`) or at `METIS_SITE_DIR` in `.env`. Promote an approved
-draft, then in the metis-website repo:
+The publisher writes into a metis-website checkout found via `METIS_SITE_DIR`
+in `.env`, else `../metis-website`. **Set `METIS_SITE_DIR`** -- the checkout is
+not necessarily in a folder named `metis-website`, and when both guesses miss,
+promoted files land in `./site_output/` and never reach the site (which looks
+exactly like publishing succeeding and nothing happening). Confirm with:
 
 ```bash
-git add content/insights-data.json insights/
-git commit -m "Publish: <title>"
-git push
+python content_publisher.py     # prints the resolved folder + what is on the site
 ```
 
-The Insights page renders the data file via `site/insights-loader.js`. If no
-site checkout is found, promoted files land in `./site_output/` instead so
-nothing is lost.
+**Publish + push live** in the Drafts tab does the whole thing: writes
+`content/insights-data.json` and `insights/<slug>.html`, commits just those two
+files, and pushes. metis-website deploys to metisag.com through Vercel on every
+push to main, so pushing is publishing. `site_git.py` handles it and only ever
+stages the files it just wrote, so unrelated work in the site checkout is never
+swept into a deploy; a push rejected because someone pushed first is rebased and
+retried once. If anything fails, the files are still written and the error says
+so plainly.
+
+`site/insights-loader.js` in metis-website renders the data file into the
+Insights page (featured essay, essay grid, field notes), replacing each section
+only once there is real content for it. The `data-topic` on each published piece
+is a pillar key from `pillars.py`, matching the page's filter chips.
 
 ## Voice
 

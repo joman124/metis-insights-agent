@@ -30,6 +30,15 @@ jobs:
         # Streamlit's C extensions mid-render.
         run: python test_studio.py
 
+      - name: Publish-to-site tests
+        # test_site_git drives real git against a local bare repo (no network,
+        # no credentials); test_publish_buttons stubs the publisher and git.
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "CI"
+          python test_site_git.py
+          python test_publish_buttons.py
+
       - name: Viral agent tests
         working-directory: viral-agents
         run: |
