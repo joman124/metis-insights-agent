@@ -26,8 +26,16 @@ import json
 import os
 from datetime import date
 
+from dotenv import load_dotenv
+
 import site_builder
 from pillars import key_for, PILLAR_NAMES
+
+# The UI loads .env before calling in, but running this module directly did not
+# -- so `python content_publisher.py` reported the site_output fallback even
+# when METIS_SITE_DIR pointed at a real checkout. Load it here too so the CLI
+# diagnostic tells the truth.
+load_dotenv(override=True)
 
 MEMORY_DIR = "memory"
 CONTENT_HISTORY_PATH = os.path.join(MEMORY_DIR, "content_history.json")
