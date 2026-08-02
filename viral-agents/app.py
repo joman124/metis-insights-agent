@@ -33,10 +33,10 @@ VIDEO_DOC = "Metis Video Queue.docx"
 
 
 # --------------------------------------------------------------------------
-# Read-only helpers (no Gemini calls)
+# Read-only helpers (no model calls)
 # --------------------------------------------------------------------------
 def has_api_key():
-    return bool(os.getenv("GEMINI_API_KEY"))
+    return bool(os.getenv("ANTHROPIC_API_KEY"))
 
 
 def load_drafts(doc_path):
@@ -109,14 +109,14 @@ def render_sidebar():
     with st.sidebar:
         st.header("System status")
         if has_api_key():
-            st.success("GEMINI_API_KEY loaded")
+            st.success("ANTHROPIC_API_KEY loaded")
         else:
-            st.error("No GEMINI_API_KEY found. Live runs are disabled.")
+            st.error("No ANTHROPIC_API_KEY found. Live runs are disabled.")
             st.caption("Set it in .env, then restart. Read-only views still work.")
 
         st.write("**Models**")
-        st.write("- Scout / video / judge: `%s`" % (os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"))
-        st.write("- Writer: `%s`" % (os.getenv("GEMINI_WRITER_MODEL") or "gemini-pro-latest"))
+        st.write("- Scout / video / judge: `%s`" % (os.getenv("ANTHROPIC_MODEL") or "claude-opus-5"))
+        st.write("- Writer: `%s`" % (os.getenv("ANTHROPIC_WRITER_MODEL") or "claude-opus-5"))
 
         st.divider()
         st.header("The agents")

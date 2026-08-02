@@ -13,7 +13,7 @@ inside this studio and must not start its own st.navigation (only one
 navigation is allowed per session; it falls back to a sidebar page switch).
 
 They are two separate applications that happen to share module names
-(``agents``, ``guardrails``, ``gemini_client``, ...). Rather than merge their
+(``agents``, ``guardrails``, ``anthropic_client``, ...). Rather than merge their
 code -- which would collide -- this launcher runs the selected app in-process
 with three isolations applied on every rerun:
 

@@ -57,9 +57,9 @@ mode. Likely touch points:
 ## Constraints (do not relearn the hard way)
 
 - All `.py` files must be pure ASCII (use `chr(0x2014)` etc.).
-- `google-genai` SDK; model names only in `.env`.
-- No live Gemini key in a cloud session (it is in John's local `.env`), so the
-  Gemini-calling paths are verified on John's machine; no-API logic and the
+- The official `anthropic` SDK; model names only in `.env`.
+- No live Anthropic key in a cloud session (it is in John's local `.env`), so the
+  model-calling paths are verified on John's machine; no-API logic and the
   site render are verifiable in-session.
 - Claude pushes to GitHub directly (see CLAUDE.md preferences). If a push is
   blocked, `add_repo` the repo into session scope, then set `origin` to

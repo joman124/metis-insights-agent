@@ -3,7 +3,7 @@
 The Strategist agent: plans what to publish this cycle and under which pillar.
 Reads persistent state from memory/ (content history + rolling pillar
 distribution), balances pillar coverage, applies Metis's deliberately slow
-cadence, and writes the plan to memory/calendar.json. Pure logic, no Gemini
+cadence, and writes the plan to memory/calendar.json. Pure logic, no model
 calls.
 
 Cadence (the editorial call John can tune -- these are the knobs):

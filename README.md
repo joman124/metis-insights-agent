@@ -25,7 +25,7 @@ pip install -r requirements.txt
 pip install -r viral-agents/requirements.txt
 
 copy .env.example .env        # Windows  (cp on macOS/Linux)
-# then edit .env: paste the SAME GEMINI_API_KEY used by the After Work project
+# then edit .env: paste the SAME ANTHROPIC_API_KEY used by the After Work project
 python check_setup.py         # confirms the key works, lists callable models
 ```
 

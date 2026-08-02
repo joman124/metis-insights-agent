@@ -2,7 +2,7 @@
 """
 The Orchestrator: routes natural-language requests to the right agent(s).
 
-Routing itself (route()) is deterministic keyword matching, not a Gemini
+Routing itself (route()) is deterministic keyword matching, not a model call
 call, so it is fully unit-testable without an API key. Only the agent
 pipelines it dispatches to (handle_request()) need one.
 
@@ -69,7 +69,7 @@ def route(request: str):
 def handle_request(request: str, auto_publish: bool = False) -> str:
     """Route the request and run the matched agent pipeline. Imports agents
     lazily inside each handler so routing stays importable without an API
-    key; only the branch that actually runs needs GEMINI_API_KEY set.
+    key; only the branch that actually runs needs ANTHROPIC_API_KEY set.
 
     auto_publish: when True, a draft that PASSES the voice guardrails is
     promoted straight to the site (content/insights-data.json + article page)
@@ -151,7 +151,7 @@ def _handle_plan_cycle(auto_publish=False) -> str:
     lines = ["[ORCHESTRATOR] Cycle plan:"]
     for i, item in enumerate(plan):
         if i > 0:
-            # Each item runs its own revise loop of Gemini calls; pause between
+            # Each item runs its own revise loop of model calls; pause between
             # items too so a multi-item plan does not burst the per-minute cap.
             time.sleep(CALL_PACING_SECONDS)
 

@@ -76,7 +76,7 @@ def test_merge_counts_repeats_and_caps():
 def test_lessons_prompt_shape():
     _isolate()
     # No lessons and no API key: an empty block, so prompts are unchanged.
-    key = os.environ.pop("GEMINI_API_KEY", None)
+    key = os.environ.pop("ANTHROPIC_API_KEY", None)
     try:
         assert edit_lessons.lessons_prompt() == ""
         edit_lessons._merge_lessons(["Cut the closing question."])
@@ -85,24 +85,24 @@ def test_lessons_prompt_shape():
         assert "- Cut the closing question." in block
     finally:
         if key is not None:
-            os.environ["GEMINI_API_KEY"] = key
+            os.environ["ANTHROPIC_API_KEY"] = key
     print("[PASS] prompt block is empty when unlearned, listed when learned")
 
 
 def test_distill_marks_batch_and_merges(monkeypatch_generate=None):
     _isolate()
-    os.environ["GEMINI_API_KEY"] = os.environ.get("GEMINI_API_KEY", "test-key")
+    os.environ["ANTHROPIC_API_KEY"] = os.environ.get("ANTHROPIC_API_KEY", "test-key")
     edit_lessons.record_edit("Draft with a closing question?",
                              "Draft with a closing statement.")
 
     # Stub the model call: distillation must not hit the network in tests.
-    import gemini_client
-    real_generate = gemini_client.generate
-    gemini_client.generate = lambda *a, **k: '["Cut the closing question."]'
+    import anthropic_client
+    real_generate = anthropic_client.generate
+    anthropic_client.generate = lambda *a, **k: '["Cut the closing question."]'
     try:
         made = edit_lessons.distill_pending()
     finally:
-        gemini_client.generate = real_generate
+        anthropic_client.generate = real_generate
 
     assert made == 1, made
     assert edit_lessons.lessons() == ["Cut the closing question."]
@@ -115,16 +115,16 @@ def test_distill_marks_batch_and_merges(monkeypatch_generate=None):
 
 def test_distill_survives_bad_model_output():
     _isolate()
-    os.environ["GEMINI_API_KEY"] = os.environ.get("GEMINI_API_KEY", "test-key")
+    os.environ["ANTHROPIC_API_KEY"] = os.environ.get("ANTHROPIC_API_KEY", "test-key")
     edit_lessons.record_edit("before text", "after text")
-    import gemini_client
-    real_generate = gemini_client.generate
-    gemini_client.generate = lambda *a, **k: "not json at all"
+    import anthropic_client
+    real_generate = anthropic_client.generate
+    anthropic_client.generate = lambda *a, **k: "not json at all"
     try:
         # Must not raise: a bad distill can never break drafting.
         assert edit_lessons.distill_pending() == 0
     finally:
-        gemini_client.generate = real_generate
+        anthropic_client.generate = real_generate
     assert edit_lessons.lessons() == []
     print("[PASS] bad model output is swallowed, not raised")
 

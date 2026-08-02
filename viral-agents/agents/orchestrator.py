@@ -2,7 +2,7 @@
 """
 The Metis Orchestrator: routes natural-language requests to the right agent.
 
-Routing itself (route()) is deterministic keyword matching, not a Gemini call,
+Routing itself (route()) is deterministic keyword matching, not a model call,
 so it is fully unit-testable without an API key. Only the agent pipelines it
 dispatches to (handle_request()) need one.
 
@@ -52,7 +52,7 @@ def route(request: str):
 def handle_request(request: str) -> str:
     """Route the request and run the matched agent pipeline. Imports agents
     lazily inside each handler so routing stays importable without an API key;
-    only the branch that actually runs needs GEMINI_API_KEY set."""
+    only the branch that actually runs needs ANTHROPIC_API_KEY set."""
     from observability import log_decision
 
     intent, topic = route(request)

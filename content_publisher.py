@@ -155,7 +155,7 @@ def promote_to_site(body: str, fmt: str, pillar: str, title: str = None,
     fmt is 'essay' or 'field_note', pillar is a full Metis pillar name.
 
     title/dek are derived from the body via the writer agents when not given
-    (one cheap Gemini call). featured defaults to True for essays (newest
+    (one cheap model call). featured defaults to True for essays (newest
     essay becomes the featured slot) and is ignored for field notes.
 
     Returns a dict describing what was written (entry, data_path,

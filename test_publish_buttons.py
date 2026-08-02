@@ -49,6 +49,28 @@ class _Recorder:
                 "msg": "Published and pushed (abc1234 on main)."}
 
 
+def _seed_drafts_doc():
+    """Write a one-essay fixture and point the app at it via METIS_DRAFTS_DOC.
+
+    Without this the Drafts tab renders no rows at all: load_drafts() reads
+    'Insights Drafts.docx', which is John's local review artifact and is not
+    in the repo, so on a clean checkout there are no promote/live buttons to
+    click and every test here dies with KeyError: 'promote-essay-0'.
+
+    Built with the real doc_output.append_to_doc(), so this also exercises the
+    write -> parse round trip rather than hand-rolling a fake docx.
+    """
+    import doc_output
+    path = os.path.join(tempfile.mkdtemp(), "Insights Drafts.docx")
+    doc_output.append_to_doc(
+        path,
+        "[Essay] A Test Essay",
+        "First paragraph of the test essay.\n\nSecond paragraph.",
+    )
+    os.environ["METIS_DRAFTS_DOC"] = path
+    return path
+
+
 def _install(rec):
     content_publisher.promote_to_site = rec.promote
     site_git.publish_files = rec.publish_files
@@ -56,6 +78,7 @@ def _install(rec):
     tmp = tempfile.mkdtemp()
     edit_lessons.HISTORY_PATH = os.path.join(tmp, "edit_history.json")
     edit_lessons.LESSONS_PATH = os.path.join(tmp, "edit_lessons.json")
+    _seed_drafts_doc()
 
 
 def _run_app():

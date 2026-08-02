@@ -3,7 +3,7 @@
 Regression test for editing a queued post in the approval queue UI.
 
 Drives the real app.py in-process with Streamlit's AppTest harness (no browser,
-no Gemini): seed a queued item, type into its edit box, click "Save edits", and
+no model calls): seed a queued item, type into its edit box, click "Save edits", and
 assert the new text is persisted to the ledger and a confirmation is shown and
 stays on screen. This guards the bug where a save silently discarded the edit
 (or hid its confirmation behind an immediate rerun).

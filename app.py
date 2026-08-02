@@ -29,11 +29,14 @@ load_dotenv(override=True)
 
 CALENDAR_PATH = os.path.join("memory", "calendar.json")
 TRACE_PATH = os.path.join("logs", "agent_trace.jsonl")
-DRAFTS_DOC = "Insights Drafts.docx"
+# Overridable so tests can point the Drafts tab at a fixture instead of the
+# real review doc. The default is the file doc_output.append_to_doc() writes,
+# which lives beside the app and is deliberately not in git.
+DRAFTS_DOC = os.getenv("METIS_DRAFTS_DOC", "Insights Drafts.docx")
 
 
 # --------------------------------------------------------------------------
-# Data helpers (read-only; no Gemini calls, safe to run anytime)
+# Data helpers (read-only; no model calls, safe to run anytime)
 # --------------------------------------------------------------------------
 def load_calendar():
     if not os.path.exists(CALENDAR_PATH):
@@ -116,7 +119,7 @@ def load_trace(limit=40):
 
 
 def has_api_key():
-    return bool(os.getenv("GEMINI_API_KEY"))
+    return bool(os.getenv("ANTHROPIC_API_KEY"))
 
 
 def _publish_draft(entry, heading, label, fmt, pillar, body, title_override,
@@ -285,9 +288,9 @@ st.caption(
 with st.sidebar:
     st.header("System status")
     if has_api_key():
-        st.success("GEMINI_API_KEY loaded")
+        st.success("ANTHROPIC_API_KEY loaded")
     else:
-        st.error("No GEMINI_API_KEY found. Live runs are disabled.")
+        st.error("No ANTHROPIC_API_KEY found. Live runs are disabled.")
         st.caption("Set it in .env (reuse the After Work key), then restart. "
                    "Read-only views still work.")
 
@@ -315,8 +318,8 @@ with st.sidebar:
                    "happens at the git commit step.")
 
     st.write("**Models**")
-    st.write("- Agents / judge: `%s`" % (os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"))
-    st.write("- Writers: `%s`" % (os.getenv("GEMINI_WRITER_MODEL") or "gemini-pro-latest"))
+    st.write("- Agents / judge: `%s`" % (os.getenv("ANTHROPIC_MODEL") or "claude-opus-5"))
+    st.write("- Writers: `%s`" % (os.getenv("ANTHROPIC_WRITER_MODEL") or "claude-opus-5"))
 
     st.divider()
     st.header("The agents")
@@ -352,7 +355,7 @@ st.caption(
 
 with st.expander("Note on live runs (cost + time)"):
     st.markdown(
-        "A full cycle plan makes many live Gemini calls (Scout, then each "
+        "A full cycle plan makes many live model calls (Scout, then each "
         "writer's revise loop) and can take a few minutes with rate-limit "
         "pacing. It also draws on the prepaid API balance. For a fast, free "
         "demo, use the **This Cycle's Plan**, **Drafts**, and **Agent Trace** "
