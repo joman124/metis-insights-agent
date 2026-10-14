@@ -15,7 +15,12 @@ Run:  python test_publish_buttons.py
 import os
 import tempfile
 
-import content_publisher
+# Both buttons are disabled without a key, and the real one lives in a
+# user-level env var a CI or sandboxed shell does not have -- which made every
+# click below a silent no-op. No request is ever sent with this.
+os.environ.setdefault("ANTHROPIC_API_KEY", "test-key-not-real")
+
+import content_publisher  # noqa: E402
 import edit_lessons
 import site_git
 
