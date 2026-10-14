@@ -45,7 +45,7 @@ streamlit run dashboard.py       # or double-click "Metis Content Studio.bat"
 
 | Sidebar page | What it does | How content goes out |
 | --- | --- | --- |
-| **Viral Content** | Hot-topic LinkedIn posts + Substack Notes (Create / Review) | Edit in the Review queue, then **Approve + post** publishes to the Metis LinkedIn page (honors `LINKEDIN_DRY_RUN`) |
+| **Viral Content** | Hot-topic LinkedIn posts + Substack Notes (Create / Review) | Edit in the Review queue, copy it out, post it yourself, then paste the link and **Mark as posted** (that link feeds the Performance tab). **Approve + post** via the API only appears when `LINKEDIN_DRY_RUN=false` |
 | **Essays & Field Notes** | Long-form pieces for the website | Edit in the Drafts tab, then **Publish + push live** writes the site files, commits, and pushes -- the site rebuilds itself, so the piece is public in a couple of minutes. **Write files only** stops before pushing. |
 
 Both pages are edit-then-publish: whatever is in the box is what goes out.

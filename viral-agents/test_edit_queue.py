@@ -79,6 +79,58 @@ def test_edit_persists_and_confirms():
           "for learning:", repr(new_text))
 
 
+def test_urn_from_url():
+    f = posts_ledger.urn_from_url
+    assert f("https://www.linkedin.com/feed/update/urn:li:activity:7123456/") \
+        == "urn:li:activity:7123456"
+    assert f("https://www.linkedin.com/feed/update/urn%3Ali%3Ashare%3A99") \
+        == "urn:li:share:99"
+    assert f("https://www.linkedin.com/posts/metis-ag_leadership-activity-7123456-AbCd"
+             "?utm_source=share") == "urn:li:activity:7123456"
+    assert f("https://metis.substack.com/p/some-note") is None
+    assert f("") is None
+
+
+def test_mark_as_posted_records_link_without_api():
+    """With LINKEDIN_DRY_RUN on (the default), the queue offers Mark as posted
+    instead of Approve + post, and the pasted link becomes the URN the metrics
+    sync reads."""
+    from streamlit.testing.v1 import AppTest
+
+    tmp = tempfile.mkdtemp()
+    ledger = os.path.join(tmp, "posts.json")
+    edit_lessons.HISTORY_PATH = os.path.join(tmp, "edit_history.json")
+    edit_lessons.LESSONS_PATH = os.path.join(tmp, "edit_lessons.json")
+    posts_ledger.save([], path=ledger)
+    rid = posts_ledger.add(topic="t", text="Body.", platform="linkedin",
+                           path=ledger)["id"]
+    posts_ledger.LEDGER_PATH = ledger
+    os.environ["LINKEDIN_DRY_RUN"] = "true"
+
+    os.environ["METIS_STUDIO"] = "1"
+    at = AppTest(script_path="app.py", default_timeout=60).run()
+    at.radio[0].set_value("Review").run()
+    assert not at.exception, at.exception
+    assert not [b for b in at.button if b.key == "ap-%s" % rid], \
+        "Approve + post must be hidden while dry run is on"
+
+    at.text_input(key="url-%s" % rid).set_value("not a link").run()
+    at.button(key="mp-%s" % rid).click().run()
+    assert posts_ledger.load(ledger)[0]["status"] == "queued"
+    assert any("No post id" in e.value for e in at.error)
+
+    link = "https://www.linkedin.com/feed/update/urn:li:activity:42/"
+    at.text_input(key="url-%s" % rid).set_value(link).run()
+    at.button(key="mp-%s" % rid).click().run()
+    rec = posts_ledger.load(ledger)[0]
+    assert rec["status"] == "posted", rec
+    assert rec["urn"] == "urn:li:activity:42", rec
+    assert rec["url"] == link and rec["posted_at"], rec
+    print("[PASS] Mark as posted records the link and URN; no API call.")
+
+
 if __name__ == "__main__":
     test_edit_persists_and_confirms()
+    test_urn_from_url()
+    test_mark_as_posted_records_link_without_api()
     print("OK")

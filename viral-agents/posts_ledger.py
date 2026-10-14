@@ -20,6 +20,7 @@ Each record:
     "text": str,
     "status": "queued" | "posted" | "rejected" | "skipped",
     "urn": str | None,          # LinkedIn post id, once posted
+    "url": str,                 # optional: link John pasted after posting by hand
     "posted_at": ISO | None,
     "metrics": {"impressions", "reactions", "comments", "shares"} | None
   }
@@ -29,6 +30,7 @@ Pure file I/O + plain dicts, no model calls. Safe to import and unit-test anywhe
 
 import json
 import os
+import re
 from datetime import datetime, timezone
 
 LEDGER_PATH = os.path.join("memory", "posts.json")
@@ -99,6 +101,19 @@ def update(record_id: str, path: str = None, **fields) -> dict:
     if updated is not None:
         save(records, path)
     return updated
+
+
+def urn_from_url(url: str):
+    """Pull the post URN out of a LinkedIn post link, e.g.
+    https://www.linkedin.com/feed/update/urn:li:activity:7123/ -> urn:li:activity:7123.
+    "Copy link to post" links (/posts/name_slug-activity-7123-abcd) carry the
+    same activity id in the slug. None if there is no id (e.g. a Substack link)."""
+    url = url or ""
+    m = re.search(r"urn(?::|%3A)li(?::|%3A)(activity|share|ugcPost)(?::|%3A)(\d+)", url)
+    if m:
+        return "urn:li:%s:%s" % m.groups()
+    m = re.search(r"-activity-(\d+)", url)
+    return "urn:li:activity:%s" % m.group(1) if m else None
 
 
 def mark_posted(record_id: str, urn: str, path: str = None) -> dict:
