@@ -41,21 +41,42 @@ drafts against `REFERENCE_PASSAGES`, which are placeholder site-copy excerpts
 until real samples are dropped into `voice_reference/` (see that folder's
 README). The banned-phrase list and guardrails enforce the voice mechanically.
 
+### Metis is the firm's voice, not John's -- a deliberate boundary
+
+John's personal voice lives in the `john-voice` skill and in the After Work
+project (`kaggle-agent-capstone`). Its **Part 2** (anti-AI tells: banned
+machine vocabulary, contrastive negation, fragment triads) is voice-neutral
+and IS applied here -- see the "Banned AI vocabulary" block in
+`voice_profile.py` and `find_fragment_triads()` in `guardrails.py`.
+
+Its **Part 1** (John's first-person clinical voice: open on a specific
+moment or clinical detail, put a body in the room, end unresolved with no
+call to action) is deliberately NOT applied here, and should not be added.
+Metis Insights is board-facing advisory content written as the firm; the
+skill itself scopes out "deliverables written in an organization's voice."
+John confirmed this boundary on 2026-08-01. Do not "fix" it by merging
+Part 1 into `VOICE_SYSTEM_PROMPT`.
+
 ## Hard technical constraints (inherited, still true)
 
 1. **All source `.py` files must be pure ASCII.** Never put a raw em-dash,
    curly quote, or other non-ASCII byte in a `.py` file. Use `chr(0x2014)`
    etc. Keep `# -*- coding: utf-8 -*-` at the top of every `.py` file.
    (`.md`, `.json`, `.txt`, `.html` files may use UTF-8.)
-2. **Use the `google-genai` SDK, not `google-generativeai`.** Import as
-   `from google import genai`.
-3. **Model names live in `.env`.** `GEMINI_MODEL` (Flash) for Scout and the
-   voice judge; `GEMINI_WRITER_MODEL` (a pro model) for the essay/field-note
-   writers. Never hard-code model names. `check_setup.py` lists what a key
-   can call. Reuse the same key as the After Work project.
-4. **Free tier rate-limits aggressively.** Retry-with-backoff on 503/500 and
-   a pause between calls live in `gemini_client.py` / `guardrails.py`. Fail
-   with plain-English messages on 429/404/auth -- never a raw traceback.
+2. **Use the official `anthropic` SDK.** Import as `import anthropic`. Every
+   model call goes through `anthropic_client.generate()` -- never construct an
+   `anthropic.Anthropic()` client anywhere else.
+3. **Model names live in `.env`.** `ANTHROPIC_MODEL` for Scout and the voice
+   judge; `ANTHROPIC_WRITER_MODEL` for the essay/field-note writers. Both
+   default to `claude-opus-5`. Never hard-code model names. `check_setup.py`
+   lists what a key can call. Reuse the same key as the After Work project.
+4. **Claude Opus 5 rejects a `temperature` parameter** (HTTP 400), and thinks
+   adaptively by default. `generate()` accepts `temperature` and
+   `disable_thinking` and ignores both, so those per-content-type values no
+   longer vary output -- steer tone through the prompt. The SDK retries 429s
+   and 5xx itself with backoff, so do not hand-roll a retry loop
+   (`LLM_CALL_PACING_SECONDS` now defaults to 0). Fail with plain-English
+   messages on quota/bad-model/refusal/auth -- never a raw traceback.
 5. **Never put secrets in code.** The API key is in `.env`, which is gitignored.
 
 ## The taxonomy: five Metis Pillars
@@ -97,7 +118,7 @@ The full pipeline is built: Scout (`agents/scout.py`), Strategist
 Writer (`agents/field_note_writer.py`), Analyst (`agents/analyst.py`), and the
 Orchestrator (`agents/orchestrator.py`), all wired to a Streamlit UI
 (`app.py`) and the publisher (`content_publisher.py` + `site_builder.py`).
-Guardrails and the Gemini client carried over unchanged in behavior.
+Guardrails and the shared model client carried over unchanged in behavior.
 
 Open follow-ups: real voice samples in `voice_reference/`; wiring real reader
 analytics into `memory/engagement_data.json` (the Analyst reads it but nothing

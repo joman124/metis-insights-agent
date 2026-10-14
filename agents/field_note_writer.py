@@ -18,8 +18,8 @@ from voice_profile import VOICE_SYSTEM_PROMPT, ANTI_AI_TELL_PROMPT, CONTENT_RULE
 from guardrails import draft_with_guardrails
 import edit_lessons
 
-MODEL = os.getenv("GEMINI_WRITER_MODEL", "gemini-pro-latest")
-JUDGE_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+MODEL = os.getenv("ANTHROPIC_WRITER_MODEL", "claude-opus-5")
+JUDGE_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-opus-5")
 SYSTEM_INSTRUCTION = VOICE_SYSTEM_PROMPT + "\n\n" + ANTI_AI_TELL_PROMPT
 DRAFTS_DOC = "Insights Drafts.docx"
 NOTE_RULES = CONTENT_RULES["field_note"]
@@ -72,10 +72,10 @@ def write_field_note(topic: str, pillar: str) -> str:
 
 
 def propose_title(note_text: str, pillar: str) -> str:
-    """One cheap, ungated Gemini call to derive a title for a finished field
+    """One cheap, ungated model call to derive a title for a finished field
     note (the single line shown in the notes-list). Falls back to a truncated
     first line if parsing fails, so publishing never hard-crashes."""
-    from gemini_client import generate
+    from anthropic_client import generate
     import json
 
     prompt = f"""This is a finished field note for Metis Advisory Group (pillar:

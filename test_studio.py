@@ -4,7 +4,7 @@ Tests for the unified Metis Content Studio (dashboard.py).
 
 The studio runs two separate applications in one process, which is where the
 sharp edges are. These tests drive the real thing with Streamlit's AppTest
-harness (no browser, no Gemini) and lock in the two failures that actually
+harness (no browser, no model calls) and lock in the two failures that actually
 happened:
 
   1. _purge_app_modules() used to drop every module living under the repo. Both

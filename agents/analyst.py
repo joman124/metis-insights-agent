@@ -3,7 +3,7 @@
 The Analyst agent: ingests reader-engagement data, computes performance per
 pillar, compares it against a target read-through rate, and produces
 recommendations the Strategist can use to adjust pillar weighting over time.
-Pure logic, no Gemini calls.
+Pure logic, no model calls.
 
 Each entry in memory/engagement_data.json is one published piece's metrics:
 {"pillar": str, "format": "essay"|"field_note", "views": int, "reads": int,

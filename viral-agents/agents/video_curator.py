@@ -6,7 +6,7 @@ page with a sharp Metis-voice commentary caption -- the "AI Ecosystem" playbook
 of riding hot clips for reach, done in Metis's measured register.
 
 How it works:
-  1. find_viral_videos() -- Gemini + Google Search grounding surfaces real,
+  1. find_viral_videos() -- Claude + server-side web search surfaces real,
      currently-viral AI video clips (title, creator, source URL, why it matters).
   2. select_top() -- picks the most on-brand candidate.
   3. draft_caption() -- writes Metis commentary through the same voice
@@ -34,8 +34,8 @@ from metis_voice_profile import (VOICE_SYSTEM_PROMPT, ANTI_AI_TELL_PROMPT,
 from guardrails import draft_with_guardrails
 import engagement
 
-MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
-WRITER_MODEL = os.getenv("GEMINI_WRITER_MODEL", "gemini-pro-latest")
+MODEL = os.getenv("ANTHROPIC_MODEL", "claude-opus-5")
+WRITER_MODEL = os.getenv("ANTHROPIC_WRITER_MODEL", "claude-opus-5")
 SYSTEM_INSTRUCTION = VOICE_SYSTEM_PROMPT + "\n\n" + ANTI_AI_TELL_PROMPT
 
 CAPTION_RULES = PLATFORM_RULES["video_caption"]
@@ -72,17 +72,16 @@ For each one, return an object with exactly these six keys:
 Only include videos you can point to a real URL for. Return ONLY a JSON array
 of {count} objects. No markdown code fences, no preamble - just the raw JSON."""
 
-    # Imported lazily so the module imports without google-genai installed
-    # (tests exercise select_top/build_post without it); only this call needs it.
-    from google.genai import types
-    from gemini_client import generate
+    # Imported lazily so the module imports without the anthropic SDK
+    # installed (tests exercise select_top/build_post without it); only this
+    # call needs it.
+    from anthropic_client import generate, WEB_SEARCH_TOOL
 
     raw = generate(
         MODEL,
         prompt,
         system_instruction=DISCOVERY_SYSTEM,
-        tools=[types.Tool(google_search=types.GoogleSearch())],
-        disable_thinking=True,
+        tools=[WEB_SEARCH_TOOL],
     )
     return _parse_json_array(raw)
 
@@ -229,7 +228,7 @@ def _parse_json_array(raw: str) -> list:
         data = json.loads(text)
     except json.JSONDecodeError:
         raise SystemExit(
-            "\n[VIDEO] Gemini did not return valid JSON. Raw output:\n" + raw[:800]
+            "\n[VIDEO] Claude did not return valid JSON. Raw output:\n" + raw[:800]
         )
     if not isinstance(data, list):
         raise SystemExit(f"\n[VIDEO] Expected a JSON array of videos, got: {type(data)}")

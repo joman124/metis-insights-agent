@@ -6,7 +6,7 @@ about quarterly. Drafting runs through guardrails.draft_with_guardrails(),
 which generates, scores (first-pass rule checks + LLM-as-judge voice/tone),
 and re-drafts with the judge's feedback up to 3 times before giving up.
 
-Uses its own model (GEMINI_WRITER_MODEL), separate from GEMINI_MODEL which the
+Uses its own model (ANTHROPIC_WRITER_MODEL), separate from ANTHROPIC_MODEL which the
 other agents use, since draft quality matters most here. Defaults to a pro
 model; override in .env if your key does not have access to one (run
 check_setup.py to see what is available).
@@ -20,8 +20,8 @@ from voice_profile import VOICE_SYSTEM_PROMPT, ANTI_AI_TELL_PROMPT, CONTENT_RULE
 from guardrails import draft_with_guardrails
 import edit_lessons
 
-MODEL = os.getenv("GEMINI_WRITER_MODEL", "gemini-pro-latest")
-JUDGE_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+MODEL = os.getenv("ANTHROPIC_WRITER_MODEL", "claude-opus-5")
+JUDGE_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-opus-5")
 SYSTEM_INSTRUCTION = VOICE_SYSTEM_PROMPT + "\n\n" + ANTI_AI_TELL_PROMPT
 DRAFTS_DOC = "Insights Drafts.docx"
 ESSAY_RULES = CONTENT_RULES["essay"]
@@ -74,12 +74,12 @@ def write_essay(topic: str, pillar: str) -> str:
 
 
 def propose_metadata(essay_text: str, pillar: str) -> dict:
-    """One cheap, ungated Gemini call to derive a title and a one-sentence dek
+    """One cheap, ungated model call to derive a title and a one-sentence dek
     from a finished essay, for the site card and article header. Runs on the
     Flash model at promote time (not per draft), so only pieces John actually
     promotes pay for it. Falls back to a truncated first line if parsing
     fails, so publishing never hard-crashes on a metadata hiccup."""
-    from gemini_client import generate
+    from anthropic_client import generate
     import json
 
     prompt = f"""This is a finished essay for Metis Advisory Group (pillar:

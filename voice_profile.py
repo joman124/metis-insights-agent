@@ -152,6 +152,41 @@ BANNED_PHRASES = [
     "ever-changing landscape", "fast-paced world",
     # personal tell to avoid (kept from the book voice: it leaks into drafts)
     "quietly",
+
+    # --- Banned AI vocabulary (john-voice skill, Part 2) ---
+    # Part 2 only. Metis writes in the firm's voice, not John's, so the
+    # Part 1 voice rules (first-person clinical, end unresolved) do NOT
+    # apply here -- but machine fingerprints are voice-neutral.
+    # A hit here is a HARD fail, so only words with no plausible innocent use
+    # in John's clinical prose go in bare. See the scoped list below for the
+    # ones that do have a legitimate use.
+    "delve", "intricate", "realm of", "garner", "bolster", "nuanced",
+    "holistic", "showcase", "seamless", "groundbreaking", "renowned",
+    "breathtaking", "vibrant",
+
+    # Scoped forms. These words are fine in ordinary clinical writing
+    # ("foster care", "profound grief", "robust findings", "enduring
+    # connection" is a Worden citation), so banning the bare word would fail
+    # good drafts and burn a redraft cycle every time. Ban the AI construction
+    # instead, matching the "underscores the" / "highlighting the" pattern
+    # already used above.
+    "foster a", "foster an", "fosters a", "foster greater",
+    "harness the", "harnessing the",
+    "a profound impact", "profoundly shaped",
+    "robust framework", "robust set of", "robust solution",
+    "crucial to understand", "crucially",
+    "marks a turning point", "leaves an indelible mark",
+    "commitment to excellence", "commitment to quality",
+    "represents a shift", "offers a glimpse",
+
+    # Vague attribution (Part 2): a claim is sourced by name or it is John's
+    # own observation.
+    "experts argue", "experts say", "studies show", "research shows",
+    "many believe", "it is widely recognized", "observers note",
+
+    # Wrap-up openers. Scoped with the trailing comma so the tell is caught
+    # ("Ultimately, what matters...") without banning ordinary adverb use.
+    "ultimately,", "overall,", "in summary,", "all in all,",
 ]
 
 # Negative-parallelism fragments. Flagged for review rather than auto-rejected,
@@ -295,7 +330,7 @@ JUDGE_SYSTEM_INSTRUCTION = (
 #
 # temperature is per-format: long-form essays run cooler for control and
 # consistency across 800-1500 words; short field notes run a little hotter to
-# stay pointed and varied. Threaded through gemini_client.generate() by the
+# stay pointed and varied. Threaded through anthropic_client.generate() by the
 # writer agents. The voice judge is separate and always runs deterministic
 # (temp 0) since it scores, not generates.
 #

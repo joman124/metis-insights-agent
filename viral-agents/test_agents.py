@@ -3,7 +3,7 @@
 Unit tests for the parts of the Metis agents that run without an API key:
 the Orchestrator's keyword routing, the pure-logic engagement critic, the
 rule-based guardrail checks, and the video curator's pure helpers (candidate
-selection, credit line, post assembly). These never call Gemini.
+selection, credit line, post assembly). These never call the API.
 
 Run:  python -m unittest test_agents
   or: python test_agents.py

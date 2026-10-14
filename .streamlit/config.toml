@@ -2,10 +2,10 @@
 # (streamlit run dashboard.py) and the standalone essays app (streamlit run
 # app.py). Pinning it stops the app from drifting onto whatever port is
 # free and colliding with other Streamlit apps on this machine.
-# The standalone viral dashboard in viral-agents/ is pinned to 8502.
+# The standalone viral dashboard in viral-agents/ is pinned to 7502.
 
 [server]
-port = 8501
+port = 7501
 
 # Same dark Metis palette as viral-agents/.streamlit/config.toml, so the
 # whole studio reads as one product: deep slate ground, muted bronze accent.

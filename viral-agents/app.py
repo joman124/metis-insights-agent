@@ -33,10 +33,10 @@ VIDEO_DOC = "Metis Video Queue.docx"
 
 
 # --------------------------------------------------------------------------
-# Read-only helpers (no Gemini calls)
+# Read-only helpers (no model calls)
 # --------------------------------------------------------------------------
 def has_api_key():
-    return bool(os.getenv("GEMINI_API_KEY"))
+    return bool(os.getenv("ANTHROPIC_API_KEY"))
 
 
 def load_drafts(doc_path):
@@ -109,14 +109,14 @@ def render_sidebar():
     with st.sidebar:
         st.header("System status")
         if has_api_key():
-            st.success("GEMINI_API_KEY loaded")
+            st.success("ANTHROPIC_API_KEY loaded")
         else:
-            st.error("No GEMINI_API_KEY found. Live runs are disabled.")
+            st.error("No ANTHROPIC_API_KEY found. Live runs are disabled.")
             st.caption("Set it in .env, then restart. Read-only views still work.")
 
         st.write("**Models**")
-        st.write("- Scout / video / judge: `%s`" % (os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"))
-        st.write("- Writer: `%s`" % (os.getenv("GEMINI_WRITER_MODEL") or "gemini-pro-latest"))
+        st.write("- Scout / video / judge: `%s`" % (os.getenv("ANTHROPIC_MODEL") or "claude-opus-5"))
+        st.write("- Writer: `%s`" % (os.getenv("ANTHROPIC_WRITER_MODEL") or "claude-opus-5"))
 
         st.divider()
         st.header("The agents")
@@ -303,13 +303,18 @@ def page_review():
         import edit_lessons
         import posts_ledger
         import review
+        from linkedin_publisher import _dry_run_default
+        # API posting stays behind LINKEDIN_DRY_RUN (on unless .env says
+        # false). While it is on, the only way out is John pasting it himself.
+        live_api = not _dry_run_default()
         queued = posts_ledger.by_status("queued")
         st.caption(
-            "Reactions waiting for approval. Edit the text right here, then "
-            "approve: **Approve + post** publishes exactly what is in the box "
-            "(honors LINKEDIN_DRY_RUN), so you can autopost everything from the "
-            "dashboard. A Substack Note is marked done for you to paste in. "
-            "%d item(s) queued." % len(queued)
+            "Reactions waiting for approval. Edit the text right here, copy "
+            "it, post it yourself, then paste the post's link and click "
+            "**Mark as posted** -- the link is how the Performance tab finds "
+            "its numbers. %s%d item(s) queued."
+            % ("**Approve + post** sends it through the LinkedIn API. "
+               if live_api else "", len(queued))
         )
         if not queued:
             st.info("Nothing queued. Use the Create page to draft a reaction.")
@@ -327,15 +332,30 @@ def page_review():
                     key="edit-%s" % r["id"],
                 )
                 st.caption("%d characters" % len(edited))
-                with st.expander("Copy for manual posting"):
-                    st.caption(
-                        "Use the copy icon at the top-right of the box below, "
-                        "then paste it into LinkedIn (or Substack) yourself. "
-                        "Handy while auto-posting is off or the API is still "
-                        "pending."
-                    )
-                    st.code(edited or "", language=None)
-                sv, ap, rj = st.columns(3)
+                st.caption(
+                    "Copy icon is at the top-right of the box below. Paste it "
+                    "into %s yourself."
+                    % ("Substack" if r["platform"] == "substack" else "LinkedIn")
+                )
+                st.code(edited or "", language=None)
+                url = st.text_input(
+                    "Post link (after you post it)",
+                    key="url-%s" % r["id"],
+                    placeholder="https://www.linkedin.com/posts/...",
+                )
+                cols = st.columns(4 if live_api else 3)
+                sv, mp, rj = cols[0], cols[1], cols[-1]
+                ap = cols[2] if live_api else None
+                with mp:
+                    if st.button("Mark as posted", key="mp-%s" % r["id"],
+                                 type="primary", width="stretch"):
+                        # Save the box first so the ledger holds what went live.
+                        saved = review.edit_item(r["id"], edited)
+                        res = (review.mark_posted_manually(r["id"], url)
+                               if saved["ok"] else saved)
+                        (st.success if res["ok"] else st.error)(res["msg"])
+                        if res["ok"]:
+                            st.rerun()
                 with sv:
                     if st.button("Save edits", key="sv-%s" % r["id"], width="stretch"):
                         # No st.rerun() here: the button click already reran the
@@ -344,26 +364,26 @@ def page_review():
                         # lets the confirmation below stay on screen.
                         res = review.edit_item(r["id"], edited)
                         (st.success if res["ok"] else st.error)(res["msg"])
-                with ap:
-                    if st.button("Approve + post", key="ap-%s" % r["id"], width="stretch"):
-                        # Save whatever is in the box first, so we post the
-                        # edited version, then publish.
-                        saved = review.edit_item(r["id"], edited)
-                        if not saved["ok"]:
-                            st.error(saved["msg"])
-                        else:
-                            try:
-                                result = review.approve_item(r["id"])
-                            except SystemExit as exc:
-                                # publisher raises this with a plain-English
-                                # message (e.g. no token while live). Show it,
-                                # do not crash.
-                                result = {"ok": False, "msg": str(exc)}
-                            except Exception as exc:  # noqa: BLE001
-                                result = {"ok": False, "msg": "Post failed: %s" % exc}
-                            (st.success if result["ok"] else st.error)(result["msg"])
-                            if result["ok"]:
-                                st.rerun()
+                if ap is not None and ap.button("Approve + post", key="ap-%s" % r["id"],
+                                                width="stretch"):
+                    # Save whatever is in the box first, so we post the
+                    # edited version, then publish.
+                    saved = review.edit_item(r["id"], edited)
+                    if not saved["ok"]:
+                        st.error(saved["msg"])
+                    else:
+                        try:
+                            result = review.approve_item(r["id"])
+                        except SystemExit as exc:
+                            # publisher raises this with a plain-English
+                            # message (e.g. no token while live). Show it,
+                            # do not crash.
+                            result = {"ok": False, "msg": str(exc)}
+                        except Exception as exc:  # noqa: BLE001
+                            result = {"ok": False, "msg": "Post failed: %s" % exc}
+                        (st.success if result["ok"] else st.error)(result["msg"])
+                        if result["ok"]:
+                            st.rerun()
                 with rj:
                     if st.button("Reject", key="rj-%s" % r["id"], width="stretch"):
                         review.reject_item(r["id"])

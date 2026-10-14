@@ -41,7 +41,7 @@
 
 | File | Role | LLM? |
 |------|------|------|
-| `agents/scout.py` | Finds trailing-3-month business developments via Gemini + Google Search grounding; tags each to a pillar and a format. | Yes (Flash, grounding, thinking off) |
+| `agents/scout.py` | Finds trailing-3-month business developments via Claude + server-side web search; tags each to a pillar and a format. | Yes (web search tool) |
 | `agents/strategist.py` | Plans one cycle: balances pillars over a rolling window, applies cadence (quarterly essay / monthly field note), matches Scout topics. Writes `calendar.json`. | No |
 | `agents/essay_writer.py` | Drafts long-form essays through the guardrail loop. Also `propose_metadata()` (title + dek) at promote time. | Yes (pro model) |
 | `agents/field_note_writer.py` | Drafts short field notes through the guardrail loop. Also `propose_title()`. | Yes (pro model) |
@@ -52,7 +52,7 @@
 | `pillars.py` | The five Metis Pillars (single source of truth, mirrors site `data.js`). | -- |
 | `content_publisher.py` | `promote_to_site()`: writes `insights-data.json`, generates the article page, records history. | Only if title/dek omitted |
 | `site_builder.py` | Slugs, read-time, paragraph HTML, and the standalone article-page template. | No |
-| `gemini_client.py` | Shared Gemini wrapper: retry/backoff, plain-English errors, thinking toggle. | -- |
+| `anthropic_client.py` | Shared Claude wrapper: plain-English errors, paused-turn resume, web-search tool constant. | -- |
 | `observability.py` | Appends every decision to `logs/agent_trace.jsonl`. | No |
 | `doc_output.py` | Appends drafts to `Insights Drafts.docx`. | No |
 | `app.py` | Streamlit UI: ask-the-agent + plan / drafts / trace tabs + promote button. | Wraps the above |
@@ -100,6 +100,6 @@ remains. Committing/pushing to metis-website is manual and deliberate.
 
 ## Tech stack
 
-Gemini via `google-genai`; Streamlit UI; JSON files for memory; `python-docx`
+Claude via the `anthropic` SDK; Streamlit UI; JSON files for memory; `python-docx`
 for review drafts. No database, no server. The live site stays static
 HTML/CSS/JS -- article pages are generated at publish time, not in the browser.

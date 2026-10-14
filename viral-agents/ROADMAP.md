@@ -30,9 +30,9 @@ losing the Metis voice or the brand's judgment.
 - **Tests + CI** - `test_agents.py`, `test_system.py`, GitHub Actions.
 - **Dashboard** - `app.py` (Streamlit) surfaces it all: Fast-reaction and Video-
   reaction controls, an **Approval Queue** tab where you **edit each draft in
-  place** and then approve -- Approve + post publishes exactly what is in the box,
-  so you can autopost everything from the dashboard (also
-  `python review.py edit <id> <text>`) -- a **Performance** tab (per-pillar
+  place**, copy it out, post it yourself, then paste the post link and **Mark
+  as posted** (also `python review.py posted <id> <url>`); Approve + post via
+  the API only appears with LINKEDIN_DRY_RUN=false -- a **Performance** tab (per-pillar
   metrics + a "Sync LinkedIn metrics" button), a Drafts tab, and engagement
   scores in the trace. `streamlit run app.py`.
 
@@ -44,7 +44,7 @@ losing the Metis voice or the brand's judgment.
 - **Native video pipeline** - reposting *links* under-distributes vs native
   video; decide between an owned/licensed native-upload path or generating
   original short clips.
-- **Shared infra package** - `gemini_client` / `guardrails` / `engagement` /
+- **Shared infra package** - `anthropic_client` / `guardrails` / `engagement` /
   ledger / policy are duplicated across the two repos; extract a shared package
   or add a sync check so a fix in one does not drift.
 
@@ -55,6 +55,7 @@ Scout (hot topics)
   -> ranking.rank_topics  (relevance x novelty x learned performance; drops unsafe/dupes)
   -> viral.draft_best_of_linkedin + draft_note   (voice + engagement gates, best of N)
   -> posts_ledger (status "queued")              <- run_cycle.py does the above unattended
-  -> review.py approve  -> linkedin_publisher    (honors LINKEDIN_DRY_RUN)
+  -> John posts by hand -> review.py posted <id> <url>   (URN from the link)
+     (or review.py approve -> linkedin_publisher, only with LINKEDIN_DRY_RUN=false)
   -> linkedin_metrics.sync_ledger -> analytics   (feeds performance back into ranking)
 ```

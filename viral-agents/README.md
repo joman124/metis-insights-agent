@@ -5,13 +5,13 @@ topics quickly to drive views and engagement for the Metis LinkedIn page (text
 and video) and Substack (Notes), in Metis's measured, anti-hype voice.
 
 This repo is self-contained. It mirrors the proven agent infrastructure from the
-After Work project (`gemini_client`, `guardrails`, `doc_output`, `observability`)
+After Work project (`anthropic_client`, `guardrails`, `doc_output`, `observability`)
 but ships its own Metis voice profile and its own agents.
 
 ## The agents
 
 - **Scout** (`agents/scout.py`) - finds what executives, founders, and boards are
-  talking about right now, via Gemini + Google Search grounding.
+  talking about right now, via Claude + server-side web search.
 - **Viral** (`agents/viral.py`) - turns a hot topic into a short LinkedIn post
   and a Substack Note, both drafted through the shared voice guardrails so
   "viral" still sounds like Metis.
@@ -102,7 +102,7 @@ Then from this folder, call it explicitly (no activation needed):
 ..\.venv\Scripts\python.exe check_setup.py              # confirm the key
 ```
 
-Copy `.env.example` to `.env` and fill in `GEMINI_API_KEY`. This folder keeps
+Copy `.env.example` to `.env` and fill in `ANTHROPIC_API_KEY`. This folder keeps
 its **own** `.env` (each app loads the one beside it), so a key change has to be
 made in both files -- and `check_setup.py` only proves a key can *list* models,
 not that it can generate. If drafting fails with `403 PERMISSION_DENIED` while

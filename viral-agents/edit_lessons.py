@@ -109,7 +109,7 @@ def distill_pending():
     Flash call. Called lazily from lessons_prompt() at draft time. Returns
     the number of new lessons merged. Never raises."""
     try:
-        if not os.getenv("GEMINI_API_KEY"):
+        if not os.getenv("ANTHROPIC_API_KEY"):
             return 0
         history = _load_json(HISTORY_PATH, [])
         pending = [h for h in history if not h.get("distilled")]
@@ -140,8 +140,8 @@ def distill_pending():
             "Return ONLY a JSON array of strings. Return [] if the edits are\n"
             "purely topical. No markdown fences, no preamble.")
 
-        from gemini_client import generate
-        model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        from anthropic_client import generate
+        model = os.getenv("ANTHROPIC_MODEL", "claude-opus-5")
         raw = generate(model, prompt, temperature=0.2).strip()
         if raw.startswith("```"):
             raw = raw.strip("`")

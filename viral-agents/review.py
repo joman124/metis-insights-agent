@@ -51,9 +51,31 @@ def approve_item(record_id: str) -> dict:
         return {"ok": True, "posted": True, "dry_run": False,
                 "post_id": result["post_id"],
                 "msg": f"{record_id} posted to LinkedIn (id {result['post_id']})."}
-    posts_ledger.update(record_id, status="posted")
+    posts_ledger.mark_posted(record_id, None)
     return {"ok": True, "posted": False, "manual": True,
             "msg": f"{record_id} marked done. Paste it into Substack yourself."}
+
+
+def mark_posted_manually(record_id: str, url: str = "") -> dict:
+    """John pasted the post in himself. Record it as posted (so cadence and
+    dedup count it) and keep the LinkedIn URN from its link, so the metrics
+    sync still learns from it without the API ever posting anything."""
+    record = _find(record_id)
+    if not record:
+        return {"ok": False, "msg": f"No item with id {record_id}."}
+    if record["status"] != "queued":
+        return {"ok": False, "msg": f"{record_id} is '{record['status']}', not queued."}
+    url = (url or "").strip()
+    urn = posts_ledger.urn_from_url(url)
+    if record["platform"] == "linkedin" and url and not urn:
+        return {"ok": False,
+                "msg": "No post id in that link. On LinkedIn, use the post's "
+                       "'...' menu > 'Copy link to post', and paste that."}
+    posts_ledger.mark_posted(record_id, urn)
+    if url:
+        posts_ledger.update(record_id, url=url)
+    note = " Metrics will sync from it." if urn else ""
+    return {"ok": True, "urn": urn, "msg": f"{record_id} marked as posted.{note}"}
 
 
 def edit_item(record_id: str, new_text: str) -> dict:
@@ -132,6 +154,10 @@ def cmd_approve(record_id: str) -> None:
         print("\n" + (record.get("text") or ""))
 
 
+def cmd_posted(record_id: str, url: str) -> None:
+    print("[REVIEW] " + mark_posted_manually(record_id, url)["msg"])
+
+
 def cmd_reject(record_id: str) -> None:
     print("[REVIEW] " + reject_item(record_id)["msg"])
 
@@ -150,6 +176,8 @@ def main(argv) -> None:
         cmd_edit(arg, " ".join(argv[2:]))
     elif cmd == "approve" and arg:
         cmd_approve(arg)
+    elif cmd == "posted" and arg:
+        cmd_posted(arg, argv[2] if len(argv) > 2 else "")
     elif cmd == "reject" and arg:
         cmd_reject(arg)
     else:

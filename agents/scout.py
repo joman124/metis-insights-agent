@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 The Scout agent: finds notable business events and developments from the
-trailing three months that senior leaders are talking about, using Gemini
+trailing three months that senior leaders are talking about, using Claude
 with Google Search grounding so results reflect current events rather than
 the model's training-data recall. Each finding is mapped to one of the five
 Metis Pillars and to a content format (essay or field note).
@@ -20,12 +20,10 @@ import os
 import sys
 from datetime import date, timedelta
 
-from google.genai import types
-
-from gemini_client import generate
+from anthropic_client import generate, WEB_SEARCH_TOOL
 from pillars import PILLAR_NAMES
 
-MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+MODEL = os.getenv("ANTHROPIC_MODEL", "claude-opus-5")
 
 FORMATS = ["essay", "field_note"]
 LOOKBACK_DAYS = 90
@@ -81,16 +79,14 @@ For each one, return an object with exactly these six keys:
 Return ONLY a JSON array of {count} objects. No markdown code fences, no
 preamble, no explanation - just the raw JSON array."""
 
-    # The Flash model is a thinking model; with Google Search grounding it can
-    # return finish_reason=STOP but empty text (the whole turn goes to thought
-    # parts). Disabling thinking for this grounded call makes it emit the JSON
-    # again. The writer agents keep thinking for draft quality.
+    # Claude's server-side web search replaces Gemini's Google Search
+    # grounding: the search runs on Anthropic's side and the results come
+    # back in the same response, so nothing else here changes.
     raw = generate(
         MODEL,
         prompt,
         system_instruction=SYSTEM_INSTRUCTION,
-        tools=[types.Tool(google_search=types.GoogleSearch())],
-        disable_thinking=True,
+        tools=[WEB_SEARCH_TOOL],
     )
     return _parse_json_array(raw)
 
@@ -108,7 +104,7 @@ def _parse_json_array(raw: str) -> list:
         data = json.loads(text)
     except json.JSONDecodeError:
         raise SystemExit(
-            "\n[SCOUT] Gemini did not return valid JSON. Raw output:\n" + raw[:800]
+            "\n[SCOUT] Claude did not return valid JSON. Raw output:\n" + raw[:800]
         )
     if not isinstance(data, list):
         raise SystemExit(f"\n[SCOUT] Expected a JSON array of topics, got: {type(data)}")

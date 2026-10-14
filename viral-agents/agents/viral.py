@@ -40,7 +40,7 @@ from guardrails import draft_with_guardrails, CALL_PACING_SECONDS
 import edit_lessons
 import engagement
 
-MODEL = os.getenv("GEMINI_WRITER_MODEL", "gemini-pro-latest")
+MODEL = os.getenv("ANTHROPIC_WRITER_MODEL", "claude-opus-5")
 SYSTEM_INSTRUCTION = VOICE_SYSTEM_PROMPT + "\n\n" + ANTI_AI_TELL_PROMPT
 
 LINKEDIN_DOC = "Metis LinkedIn Posts.docx"

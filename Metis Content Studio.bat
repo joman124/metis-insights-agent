@@ -3,7 +3,7 @@ REM ===================================================================
 REM  Metis Content Studio -- both agents on one page.
 REM
 REM  Double-click this file. A black console window opens, and after a
-REM  few seconds a browser tab opens at http://localhost:8501 showing a
+REM  few seconds a browser tab opens at http://localhost:7501 showing a
 REM  sidebar with two entries you can switch between freely:
 REM      Viral Content         (LinkedIn posts + Substack notes queue)
 REM      Essays & Field Notes  (long-form pieces for the website)
