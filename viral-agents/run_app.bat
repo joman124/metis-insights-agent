@@ -1,10 +1,10 @@
 @echo off
 REM Opens JUST the viral content dashboard (app.py) at
-REM http://localhost:8502, without the essays side.
+REM http://localhost:7502, without the essays side.
 REM
 REM Most of the time you want the whole studio instead: double-click
 REM "Metis Content Studio.bat" in the folder above, which puts Viral
-REM Content and Essays & Field Notes behind one sidebar on port 8501.
+REM Content and Essays & Field Notes behind one sidebar on port 7501.
 REM
 REM To stop the app: close this black console window (or press Ctrl+C in it).
 REM Closing just the browser tab does NOT stop it - the console window is
