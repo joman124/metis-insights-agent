@@ -56,7 +56,10 @@ class FakeMessages:
 
     def create(self, **kwargs):
         self.calls.append(kwargs)
-        return self._responses.pop(0)
+        r = self._responses.pop(0)
+        if isinstance(r, BaseException):
+            raise r
+        return r
 
 
 class ClientPatch:
@@ -268,6 +271,49 @@ class TestCostReport(unittest.TestCase):
         out = anthropic_client.cost_report(tmp)
         os.remove(tmp)
         self.assertIn("claude-opus-5", out)
+
+
+def _api_error(cls, status, headers=None):
+    import httpx
+    resp = httpx.Response(status, headers=headers or {},
+                          request=httpx.Request("POST", "https://api.anthropic.com"))
+    return cls("error %d" % status, response=resp, body=None)
+
+
+class TestErrorMessages(unittest.TestCase):
+
+    def test_rate_limit_names_the_exhausted_limit(self):
+        err = _api_error(anthropic_client.anthropic.RateLimitError, 429, {
+            "anthropic-ratelimit-requests-remaining": "12",
+            "anthropic-ratelimit-requests-limit": "50",
+            "anthropic-ratelimit-output-tokens-remaining": "0",
+            "anthropic-ratelimit-output-tokens-limit": "8000",
+            "anthropic-ratelimit-output-tokens-reset": "2026-10-13T12:00:00Z",
+            "retry-after": "17",
+        })
+        with ClientPatch([err]):
+            with self.assertRaises(SystemExit) as ctx:
+                anthropic_client.generate("m", "hi")
+        msg = str(ctx.exception)
+        self.assertIn("[QUOTA]", msg)
+        self.assertIn("output-tokens: 0 of 8000 left", msg)
+        self.assertIn("exhausted", msg)
+        self.assertNotIn("requests: 12 of 50 left, resets ?  <--", msg)
+        self.assertIn("17 seconds", msg)
+
+    def test_rate_limit_without_headers_still_reads_plainly(self):
+        err = _api_error(anthropic_client.anthropic.RateLimitError, 429)
+        with ClientPatch([err]):
+            with self.assertRaises(SystemExit) as ctx:
+                anthropic_client.generate("m", "hi")
+        self.assertIn("[QUOTA]", str(ctx.exception))
+
+    def test_overloaded_is_not_blamed_on_the_key(self):
+        err = _api_error(anthropic_client.anthropic.InternalServerError, 529)
+        with ClientPatch([err]):
+            with self.assertRaises(SystemExit) as ctx:
+                anthropic_client.generate("m", "hi")
+        self.assertIn("[OVERLOADED]", str(ctx.exception))
 
 
 if __name__ == "__main__":

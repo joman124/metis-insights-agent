@@ -24,7 +24,8 @@ if not API_KEY:
 
 # The SDK retries 429s and 5xx itself with exponential backoff, so there is no
 # hand-rolled retry loop below -- max_retries here is that budget.
-client = anthropic.Anthropic(api_key=API_KEY, max_retries=5)
+SDK_RETRIES = 5
+client = anthropic.Anthropic(api_key=API_KEY, max_retries=SDK_RETRIES)
 
 # Server-side web search, run on Anthropic's infrastructure. Scout passes this
 # in tools= as the replacement for Gemini's old Google Search grounding.
@@ -123,6 +124,26 @@ def _empty_message(model: str, message) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _rate_limit_detail(e) -> str:
+    """Name the limit that tripped, from the response headers. Anthropic reports
+    remaining requests / input / output tokens separately, so the one at 0 is
+    the culprit -- the successor to the quotaId parsing gemini_client did."""
+    headers = getattr(getattr(e, "response", None), "headers", None) or {}
+    lines = []
+    for kind in ("requests", "input-tokens", "output-tokens", "tokens"):
+        left = headers.get("anthropic-ratelimit-%s-remaining" % kind)
+        if left is None:
+            continue
+        cap = headers.get("anthropic-ratelimit-%s-limit" % kind, "?")
+        reset = headers.get("anthropic-ratelimit-%s-reset" % kind, "?")
+        flag = "  <-- exhausted" if left == "0" else ""
+        lines.append("  %s: %s of %s left, resets %s%s" % (kind, left, cap, reset, flag))
+    retry = headers.get("retry-after")
+    if retry:
+        lines.append("  Anthropic suggests waiting %s seconds." % retry)
+    return "\n".join(lines)
+
+
 def _log_usage(model: str, totals: dict, api_calls: int, used_tools: bool,
                stop_reason: str) -> None:
     """Append one token/cost record per generate() to logs/agent_trace.jsonl.
@@ -194,11 +215,13 @@ def generate(model: str, prompt: str, system_instruction: str = None,
                 "the model name in your .env.\n"
             )
         except anthropic.RateLimitError as e:
+            detail = _rate_limit_detail(e)
             raise SystemExit(
-                f"\n[QUOTA] Still rate-limited on '{model}' after {max_retries} retries.\n"
-                "Either you are sending too fast, or this key's spend limit is reached.\n"
+                f"\n[QUOTA] Still rate-limited on '{model}' after {SDK_RETRIES} retries.\n"
+                + (detail + "\n" if detail else "")
+                + "Either you are sending too fast, or this key's spend limit is reached.\n"
                 "Check https://console.anthropic.com/settings/limits, then run again.\n"
-                f"Anthropic's message: {str(e)[:300]}\n"
+                f"Anthropic's message: {str(e)[:1000]}\n"
             )
         except anthropic.APIConnectionError:
             raise SystemExit(
@@ -206,10 +229,16 @@ def generate(model: str, prompt: str, system_instruction: str = None,
                 "and run again.\n"
             )
         except anthropic.APIStatusError as e:
+            if e.status_code == 529:
+                raise SystemExit(
+                    f"\n[OVERLOADED] Anthropic is overloaded right now (529) and stayed\n"
+                    f"that way through {SDK_RETRIES} retries. This is their capacity,\n"
+                    "not your key or quota. Wait a few minutes and rerun.\n"
+                )
             raise SystemExit(
                 f"\n[SERVER] Anthropic returned an error ({e.status_code}) after\n"
-                f"{max_retries} retries. Usually on their end. Wait a minute and rerun.\n"
-                f"Last error: {str(e)[:200]}\n"
+                f"{SDK_RETRIES} retries. Usually on their end. Wait a minute and rerun.\n"
+                f"Last error: {str(e)[:500]}\n"
             )
 
         api_calls += 1
