@@ -2,7 +2,9 @@
 .env
 
 # Generated content (draft essays / field notes, reviewed before publishing)
-*.docx
+# NOTE: scoped to the root-level review doc only -- voice_reference/*.docx
+# samples must stay trackable, see voice_reference/README.md.
+/Insights Drafts.docx
 
 # Runtime observability trace (regenerated every run)
 logs/
