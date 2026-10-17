@@ -1,6 +1,6 @@
 # Case Studies: content-architecture decision doc
 
-**Status:** awaiting John's decision · **Owner:** metis-insights-agent · **Date:** 2026-10-14
+**Status:** DECIDED — Option B on all three · **Owner:** metis-insights-agent · **Date:** 2026-10-14 · **Decided:** 2026-10-17
 
 Metis wants a third content line beyond essays and field notes: **Case Studies** of
 companies and individual leaders, written in the same voice the Newman's Own sample
@@ -145,3 +145,24 @@ rewriting the drafting pipeline.
 3. **What's the confidentiality default?** **Named-by-default** (every case study names the
    client, and we only publish once a signed release is on file), or **anonymized-by-default**
    (de-identified role + sector, and naming a client is the opt-in that needs consent)?
+
+---
+
+## Decision (John, 2026-10-17)
+
+**Option B on all three.** Build spec for next session:
+
+1. **Where:** a third content type inside Insights. No new `/case-studies` section — case
+   studies render as Insights articles (`insights/<slug>.html`) and appear on the Insights
+   index with a "Case Study" format label.
+2. **Tagging:** by **Metis pillar**, using the existing chips. No company/industry taxonomy
+   beside `pillars.py`.
+3. **Confidentiality:** **named-with-consent** — anonymized (role + sector + situation, figures
+   banded) is the baseline; naming a client is the opt-in, gated by the `consent` field
+   (`named | anonymized | unpublished`). The publisher refuses to write a named page without
+   `consent: named`.
+
+Build surface (from Option B above): add `CONTENT_RULES["case_study"]` + `agents/case_study_writer.py`
+reusing `draft_with_guardrails()`; one branch in `orchestrator.route()`/`_deliver`; a `case_study`
+branch in `promote_to_site()` for bucketing + read-time. Scout/Strategist unchanged. No second data
+file, template family, or nav surface.
