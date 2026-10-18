@@ -14,7 +14,8 @@ Run:  python -m agents.field_note_writer
 
 import os
 
-from voice_profile import VOICE_SYSTEM_PROMPT, ANTI_AI_TELL_PROMPT, CONTENT_RULES
+from voice_profile import (VOICE_SYSTEM_PROMPT, ANTI_AI_TELL_PROMPT,
+                           CONTENT_RULES, append_cta)
 from guardrails import draft_with_guardrails
 import edit_lessons
 
@@ -54,8 +55,10 @@ Write only the note body. No title, no preamble, no explanation."""
 
 def draft_field_note(topic: str, pillar: str, max_attempts: int = 3) -> dict:
     """Generate-evaluate-revise loop for a field note. Returns
-    {"text", "attempts", "evaluation", "history"} from draft_with_guardrails."""
-    return draft_with_guardrails(
+    {"text", "attempts", "evaluation", "history"} from draft_with_guardrails,
+    with the discovery-call CTA appended to the final text (added after the
+    guardrails run, so the voice judge never scores against it)."""
+    result = draft_with_guardrails(
         MODEL,
         build_prompt=lambda feedback: _build_note_prompt(topic, pillar, feedback),
         system_instruction=SYSTEM_INSTRUCTION,
@@ -64,6 +67,7 @@ def draft_field_note(topic: str, pillar: str, max_attempts: int = 3) -> dict:
         agent="field_note_writer",
         temperature=NOTE_RULES["temperature"],
     )
+    return {**result, "text": append_cta(result["text"])}
 
 
 def write_field_note(topic: str, pillar: str) -> str:

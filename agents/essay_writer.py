@@ -16,7 +16,8 @@ Run:  python -m agents.essay_writer
 
 import os
 
-from voice_profile import VOICE_SYSTEM_PROMPT, ANTI_AI_TELL_PROMPT, CONTENT_RULES
+from voice_profile import (VOICE_SYSTEM_PROMPT, ANTI_AI_TELL_PROMPT,
+                           CONTENT_RULES, append_cta)
 from guardrails import draft_with_guardrails
 import edit_lessons
 
@@ -56,8 +57,10 @@ Write only the essay body. No title, no preamble, no explanation."""
 
 def draft_essay(topic: str, pillar: str, max_attempts: int = 3) -> dict:
     """Generate-evaluate-revise loop for an essay. Returns
-    {"text", "attempts", "evaluation", "history"} from draft_with_guardrails."""
-    return draft_with_guardrails(
+    {"text", "attempts", "evaluation", "history"} from draft_with_guardrails,
+    with the discovery-call CTA appended to the final text (added after the
+    guardrails run, so the voice judge never scores against it)."""
+    result = draft_with_guardrails(
         MODEL,
         build_prompt=lambda feedback: _build_essay_prompt(topic, pillar, feedback),
         system_instruction=SYSTEM_INSTRUCTION,
@@ -66,6 +69,7 @@ def draft_essay(topic: str, pillar: str, max_attempts: int = 3) -> dict:
         agent="essay_writer",
         temperature=ESSAY_RULES["temperature"],
     )
+    return {**result, "text": append_cta(result["text"])}
 
 
 def write_essay(topic: str, pillar: str) -> str:
