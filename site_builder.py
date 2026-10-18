@@ -33,13 +33,29 @@ def _escape(text: str) -> str:
                 .replace('"', "&quot;"))
 
 
+_URL_RE = re.compile(r"https?://[^\s<>\"]+")
+
+
+def _linkify(escaped: str) -> str:
+    """Wrap bare http(s) URLs in an anchor. Runs AFTER _escape, so the input is
+    already HTML-safe (quotes are &quot;, so a URL cannot break out of the href
+    attribute) and only well-formed http(s) links become anchors. Lets the
+    discovery-call CTA render clickable on the article page."""
+    return _URL_RE.sub(
+        lambda m: '<a href="%s" target="_blank" rel="noopener">%s</a>'
+                  % (m.group(0), m.group(0)),
+        escaped,
+    )
+
+
 def paragraphs_html(body: str) -> str:
     """Turn a plain-text body (paragraphs separated by blank lines) into
-    escaped <p> blocks."""
+    escaped <p> blocks, with bare URLs linked."""
     blocks = [b.strip() for b in re.split(r"\n\s*\n", body.strip()) if b.strip()]
     if not blocks:
         blocks = [body.strip()]
-    return "\n        ".join("<p>" + _escape(b).replace("\n", "<br>") + "</p>" for b in blocks)
+    return "\n        ".join(
+        "<p>" + _linkify(_escape(b)).replace("\n", "<br>") + "</p>" for b in blocks)
 
 
 def read_time(body: str, fmt: str = "essay") -> str:

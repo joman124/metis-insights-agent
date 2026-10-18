@@ -352,3 +352,34 @@ CONTENT_RULES = {
         "words_per_minute": 220,
     },
 }
+
+# ---------------------------------------------------------------------------
+# Discovery-call CTA. Appended to every essay and field-note draft AFTER the
+# voice guardrails run, so the judge never sees it (the drafting prompts still
+# forbid calls to action, and the judge would otherwise reject the piece). It
+# is the one lead-generation line the Insights pieces carry: a reader who
+# finishes a note gets a concrete next step. John reviews every draft and
+# removes this on the rare piece it does not fit. Not used on the Viral
+# Content path, which is for distribution, not direct response.
+#
+# The link is the firm's live Calendly discovery booking (the same one the
+# website header, services, and contact pages already point at). The task
+# proposal said "Cal.com"; Metis actually books through Calendly, so the real,
+# working link is used. paragraphs_html() auto-links the bare URL at publish
+# time, so it renders clickable on the article page.
+# ---------------------------------------------------------------------------
+CTA_BLOCK = (
+    "If this resonates with something you are working through, a conversation "
+    "may be the next useful step. Metis offers a free 30-minute discovery call "
+    "to think it through together, with no obligation to go further: "
+    "https://calendly.com/jomansoor/30min"
+)
+
+
+def append_cta(text: str) -> str:
+    """Append CTA_BLOCK to a finished draft, separated by a blank line so it
+    becomes its own paragraph. Idempotent: returns text unchanged if the CTA
+    is already present, so composing callers can never double-append it."""
+    if CTA_BLOCK in text:
+        return text
+    return text.rstrip() + "\n\n" + CTA_BLOCK
