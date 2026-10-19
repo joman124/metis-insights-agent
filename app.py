@@ -24,6 +24,7 @@ from dotenv import load_dotenv
 
 from pillars import PILLAR_NAMES
 from voice_profile import USING_PLACEHOLDER_REFERENCES
+from content_publisher import CONSENT_STATES, DEFAULT_CONSENT
 
 load_dotenv(override=True)
 
@@ -88,6 +89,9 @@ def load_drafts(doc_path):
         if heading.startswith("[Field note]"):
             e["format"] = "field_note"
             rest = heading[len("[Field note]"):].strip()
+        elif heading.startswith("[Case study]"):
+            e["format"] = "case_study"
+            rest = heading[len("[Case study]"):].strip()
         elif heading.startswith("[Essay]"):
             e["format"] = "essay"
             rest = heading[len("[Essay]"):].strip()
@@ -123,7 +127,7 @@ def has_api_key():
 
 
 def _publish_draft(entry, heading, label, fmt, pillar, body, title_override,
-                   featured, push_live, promoted):
+                   featured, push_live, promoted, consent=None):
     """Promote one draft into site content, and optionally push it live.
 
     Split out of the Drafts tab so both buttons share exactly one path: the
@@ -136,7 +140,8 @@ def _publish_draft(entry, heading, label, fmt, pillar, body, title_override,
         try:
             result = promote_to_site(
                 body=body, fmt=fmt, pillar=pillar,
-                title=(title_override.strip() or None), featured=featured)
+                title=(title_override.strip() or None), featured=featured,
+                consent=consent)
         except SystemExit as exc:
             st.error(str(exc))
             return
@@ -247,6 +252,20 @@ def render_draft_column(entries, fmt, label):
                 featured = st.checkbox(
                     "Set as the featured essay", value=True,
                     key="feat-%s-%d" % (fmt, i))
+
+            # Case studies carry a confidentiality posture (decision c14:
+            # named-with-consent). Anonymized is the safe default; pick "named"
+            # only when a signed client release is on file. "unpublished" blocks
+            # promotion entirely, so a story that cannot go out yet never leaks.
+            consent = None
+            if fmt == "case_study":
+                consent = st.selectbox(
+                    "Confidentiality", CONSENT_STATES,
+                    index=CONSENT_STATES.index(DEFAULT_CONSENT),
+                    key="consent-%s-%d" % (fmt, i),
+                    help="Anonymized: role + sector, no names (default). "
+                         "Named: only with a signed client release on file. "
+                         "Unpublished: cannot be promoted yet.")
             # Two ways out: all the way live, or write the files and stop so
             # the change can be looked at before it reaches the public site.
             go_live, stage_only = st.columns(2)
@@ -270,7 +289,8 @@ def render_draft_column(entries, fmt, label):
                     pillar=pillar, body=edited_body,
                     title_override=title_override,
                     featured=featured if fmt == "essay" else None,
-                    push_live=bool(live_clicked), promoted=promoted)
+                    push_live=bool(live_clicked), promoted=promoted,
+                    consent=consent)
 
 
 # --------------------------------------------------------------------------
@@ -417,6 +437,14 @@ with tab_drafts:
     with right:
         st.markdown("### Field notes")
         render_draft_column(entries, "field_note", "Field note")
+
+    st.markdown("### Case Studies")
+    st.caption(
+        "Client work as a situation -> intervention -> outcome arc, tagged by "
+        "pillar like every other Insights piece. Drafted anonymized; set the "
+        "confidentiality to **Named** only when a signed client release is on "
+        "file.")
+    render_draft_column(entries, "case_study", "Case study")
 
     import edit_lessons
     learned = edit_lessons.lessons()

@@ -367,6 +367,19 @@ CONTENT_RULES = {
         "temperature": 0.75,
         "words_per_minute": 220,
     },
+    # Case study -- a third content type living inside Insights (decision c14:
+    # "inside Insights, by pillar, named-with-consent"). A situation ->
+    # intervention -> outcome arc, longer than a field note, shorter than a
+    # featured essay. Drafted anonymized by default (role + sector, no real
+    # names); naming a client is a consent-gated opt-in handled at promote time,
+    # never invented by the writer. Same voice guardrails as the essay; em-dash
+    # ceiling between the essay and field-note allowances for its length.
+    "case_study": {
+        "min_words": 600, "max_words": 1200,
+        "max_em_dashes": 4,
+        "temperature": 0.6,
+        "words_per_minute": 220,
+    },
 }
 
 # ---------------------------------------------------------------------------
