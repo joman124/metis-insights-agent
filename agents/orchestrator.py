@@ -53,6 +53,9 @@ def route(request: str):
                                   "in the news", "scout")):
         return "trending", _extract_topic(request)
 
+    if "case study" in lowered or "case-study" in lowered:
+        return "case_study", _extract_topic(request)
+
     if "essay" in lowered:
         return "essay", _extract_topic(request)
 
@@ -92,12 +95,15 @@ def handle_request(request: str, auto_publish: bool = False) -> str:
         return _handle_essay(topic, auto_publish)
     if intent == "field_note":
         return _handle_field_note(topic, auto_publish)
+    if intent == "case_study":
+        return _handle_case_study(topic, auto_publish)
     if intent == "engagement":
         return _handle_engagement()
     return ("[ORCHESTRATOR] Did not recognize that request. Try things like "
             "\"What should we publish this quarter?\", \"What's trending?\", "
-            "\"Draft an essay about board AI governance\", or "
-            "\"Write a field note about return-to-office\".")
+            "\"Draft an essay about board AI governance\", "
+            "\"Write a field note about return-to-office\", or "
+            "\"Draft a case study about a stalled succession plan\".")
 
 
 def _deliver(fmt, topic, pillar, result, auto_publish, lines):
@@ -107,7 +113,8 @@ def _deliver(fmt, topic, pillar, result, auto_publish, lines):
 
     text = result["text"]
     passed = result["evaluation"]["passed"]
-    label = "[Essay] " if fmt == "essay" else "[Field note] "
+    label = {"field_note": "[Field note] ",
+             "case_study": "[Case study] "}.get(fmt, "[Essay] ")
 
     if auto_publish and passed:
         from content_publisher import promote_to_site
@@ -219,6 +226,23 @@ def _handle_field_note(topic, auto_publish=False) -> str:
     result = draft_field_note(topic, pillar)
     lines = [f"[ORCHESTRATOR] Field note draft ({pillar}):"]
     _deliver("field_note", topic, pillar, result, auto_publish, lines)
+    return "\n".join(lines) + "\n\n" + result["text"]
+
+
+def _handle_case_study(topic, auto_publish=False) -> str:
+    from agents.case_study_writer import draft_case_study
+
+    # Scout and the Strategist plan essays and field notes, not case studies
+    # (those are sourced from real client work, not trending news), so a case
+    # study needs an explicit topic rather than a Scout fallback.
+    if not topic:
+        return ("[ORCHESTRATOR] A case study needs a topic from real work. Try: "
+                "\"Draft a case study about a founder who kept reorganizing the "
+                "same unresolved conflict\".")
+    pillar = _default_pillar_for(topic, None)
+    result = draft_case_study(topic, pillar)
+    lines = [f"[ORCHESTRATOR] Case study draft ({pillar}):"]
+    _deliver("case_study", topic, pillar, result, auto_publish, lines)
     return "\n".join(lines) + "\n\n" + result["text"]
 
 

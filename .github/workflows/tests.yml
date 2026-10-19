@@ -38,6 +38,7 @@ jobs:
           git config --global user.name "CI"
           python test_site_git.py
           python test_publish_buttons.py
+          python test_case_study.py
 
       - name: Viral agent tests
         working-directory: viral-agents

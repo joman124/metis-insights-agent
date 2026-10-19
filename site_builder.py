@@ -174,7 +174,8 @@ def render_article(entry: dict) -> str:
     Expects keys: title, dek, pillar, format, read_time, published_date,
     body_html. Missing optional fields degrade gracefully."""
     fmt = entry.get("format", "essay")
-    format_label = "Field note" if fmt == "field_note" else "Essay"
+    format_label = {"field_note": "Field note",
+                    "case_study": "Case Study"}.get(fmt, "Essay")
     dek = entry.get("dek") or ""
     replacements = {
         "%%TITLE%%": _escape(entry.get("title", "Untitled")),

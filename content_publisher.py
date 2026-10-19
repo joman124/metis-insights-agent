@@ -47,6 +47,17 @@ ARTICLE_DIR = "insights"
 
 _EMPTY_DATA = {"featured": None, "essays": [], "notes": []}
 
+# Confidentiality posture for a case study (decision c14: named-with-consent).
+# Every promoted entry carries a `consent` field. For essays and field notes it
+# is NOT_APPLICABLE -- they are not about a specific client. For a case study it
+# is one of CONSENT_STATES, defaulting to "anonymized" (the safe baseline: role
+# + sector, no names). "named" is John's deliberate opt-in, selected only when a
+# signed client release is on file. "unpublished" means the story cannot go out
+# yet; the publisher refuses to write a page for it, so it can never leak.
+CONSENT_STATES = ("anonymized", "named", "unpublished")
+DEFAULT_CONSENT = "anonymized"
+CONSENT_NOT_APPLICABLE = "not_applicable"
+
 
 # --------------------------------------------------------------------------
 # Where the site content lives
@@ -114,15 +125,17 @@ def _load_history() -> list:
 
 
 def record_publish(title: str, pillar: str, fmt: str, href: str,
-                   published_date: str) -> dict:
+                   published_date: str, consent: str = CONSENT_NOT_APPLICABLE) -> dict:
     """Append one publish event to memory/content_history.json (idempotent on
-    title). Schema matches what the Strategist reads: date + pillar + format."""
+    title). Schema matches what the Strategist reads: date + pillar + format.
+    consent records the case-study confidentiality posture (NOT_APPLICABLE for
+    essays and field notes)."""
     history = _load_history()
     for entry in history:
         if entry.get("title") == title:
             return entry
     entry = {"title": title, "date": published_date, "pillar": pillar,
-             "format": fmt, "href": href, "status": "published"}
+             "format": fmt, "href": href, "status": "published", "consent": consent}
     history.append(entry)
     os.makedirs(MEMORY_DIR, exist_ok=True)
     with open(CONTENT_HISTORY_PATH, "w", encoding="utf-8") as f:
@@ -150,26 +163,49 @@ def _unique_slug(base: str, data: dict, site_dir: str) -> str:
 def promote_to_site(body: str, fmt: str, pillar: str, title: str = None,
                     dek: str = None, featured: bool = None,
                     status: str = "Published", published_date: str = None,
-                    site_dir: str = None) -> dict:
+                    site_dir: str = None, consent: str = None) -> dict:
     """Promote one approved draft into site content. body is the draft text,
-    fmt is 'essay' or 'field_note', pillar is a full Metis pillar name.
+    fmt is 'essay', 'field_note', or 'case_study'; pillar is a full Metis
+    pillar name.
 
     title/dek are derived from the body via the writer agents when not given
-    (one cheap model call). featured defaults to True for essays (newest
-    essay becomes the featured slot) and is ignored for field notes.
+    (one cheap model call). featured defaults to True for essays (newest essay
+    becomes the featured slot) and is False for case studies and field notes.
+
+    consent is the case-study confidentiality posture (see CONSENT_STATES); it
+    defaults to 'anonymized' for case studies and is ignored for other formats.
+    A case study marked 'unpublished' is refused -- no page is written for it.
 
     Returns a dict describing what was written (entry, data_path,
     article_path, site_dir, is_site, history_entry)."""
-    if fmt not in ("essay", "field_note"):
-        raise ValueError("fmt must be 'essay' or 'field_note', got %r" % fmt)
+    if fmt not in ("essay", "field_note", "case_study"):
+        raise ValueError("fmt must be 'essay', 'field_note', or 'case_study', "
+                         "got %r" % fmt)
     if pillar not in PILLAR_NAMES:
         raise ValueError("Unknown pillar %r. Expected one of: %s"
                          % (pillar, ", ".join(PILLAR_NAMES)))
 
-    # Derive metadata lazily (keeps this module importable without an API key
-    # unless a caller actually omits the title).
-    if title is None or (fmt == "essay" and dek is None):
-        if fmt == "essay":
+    # Resolve and enforce the confidentiality posture before any model call or
+    # file write, so an unpublishable case study is stopped at the door.
+    if fmt == "case_study":
+        consent = consent or DEFAULT_CONSENT
+        if consent not in CONSENT_STATES:
+            raise ValueError("consent must be one of %s for a case study, got %r"
+                             % (", ".join(CONSENT_STATES), consent))
+        if consent == "unpublished":
+            raise ValueError(
+                "This case study is marked consent='unpublished' and cannot be "
+                "promoted. Set it to 'anonymized' (no names) or 'named' (only "
+                "with a signed client release on file) first.")
+    else:
+        consent = CONSENT_NOT_APPLICABLE
+
+    # Essays and case studies both carry a title + dek on their card; field
+    # notes carry only a title. Derive lazily so the module stays importable
+    # without an API key unless a caller actually omits the metadata.
+    has_dek = fmt in ("essay", "case_study")
+    if title is None or (has_dek and dek is None):
+        if has_dek:
             from agents.essay_writer import propose_metadata
             meta = propose_metadata(body, pillar)
             title = title or meta["title"]
@@ -195,6 +231,7 @@ def promote_to_site(body: str, fmt: str, pillar: str, title: str = None,
         "topic": key_for(pillar),      # short slug -> site filter chips
         "format": fmt,
         "status": status,
+        "consent": consent,
         "read_time": site_builder.read_time(body, fmt),
         "published_date": published_date,
         "href": href,
@@ -205,7 +242,9 @@ def promote_to_site(body: str, fmt: str, pillar: str, title: str = None,
     if fmt == "field_note":
         entry["date"] = site_builder.quarter_label(published_date)
 
-    # Slot it into the data structure.
+    # Slot it into the data structure. Case studies ride the essay grid (same
+    # card, pillar-filtered) but never take the featured slot -- that stays the
+    # home of the latest essay.
     if fmt == "essay":
         make_featured = True if featured is None else featured
         if make_featured:
@@ -214,6 +253,8 @@ def promote_to_site(body: str, fmt: str, pillar: str, title: str = None,
             data["featured"] = entry
         else:
             data["essays"].insert(0, entry)
+    elif fmt == "case_study":
+        data["essays"].insert(0, entry)
     else:
         data["notes"].insert(0, entry)
 
@@ -225,7 +266,8 @@ def promote_to_site(body: str, fmt: str, pillar: str, title: str = None,
     with open(article_path, "w", encoding="utf-8") as f:
         f.write(site_builder.render_article(entry))
 
-    history_entry = record_publish(title, pillar, fmt, href, published_date)
+    history_entry = record_publish(title, pillar, fmt, href, published_date,
+                                   consent=consent)
 
     return {
         "entry": entry,
