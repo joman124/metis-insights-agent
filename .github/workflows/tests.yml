@@ -39,6 +39,7 @@ jobs:
           python test_site_git.py
           python test_publish_buttons.py
           python test_case_study.py
+          python test_article_template.py
 
       - name: Viral agent tests
         working-directory: viral-agents
