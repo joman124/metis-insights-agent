@@ -91,9 +91,14 @@ filter-chip `data-topic` value. Do not redefine the pillar list anywhere else.
 There is no CMS. `content_publisher.promote_to_site()` writes an entry into
 `content/insights-data.json` and generates `insights/<slug>.html` inside a
 local metis-website checkout (found via `METIS_SITE_DIR`, else
-`../metis-website`, else `./site_output/`). `site/insights-loader.js` in
-metis-website renders that JSON into the Insights page, per section, keeping
-the designed placeholders for any section with no real content yet.
+`../metis-website`, else `./site_output/`). `site/insights-feed.js` in
+metis-website renders that JSON into the Insights page, the home-page
+spotlight and the related-reading rows.
+
+**The site speaks as the firm.** Bylines are "Metis Advisory Group"
+(`site_builder.BYLINE_NAME`), and generated pages carry no personal name,
+email address or location. John asked for this on 2026-10-20; do not add a
+personal byline back. `test_article_template.py` checks it.
 
 **The Drafts tab pushes.** As of 2026-07-26 the UI has two buttons: *Publish +
 push live* (write, commit, push -- metis-website auto-deploys to metisag.com

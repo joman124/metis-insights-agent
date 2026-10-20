@@ -87,16 +87,21 @@ The "right" cadence is an editorial call. These constants are the dials.
 Promoting an approved draft:
 
 1. builds a structured entry (slug, title, dek, read-time, `body_html`, pillar
-   `topic` key, byline);
+   `topic` key, byline -- always the firm, "Metis Advisory Group");
 2. slots it into `content/insights-data.json` (`featured` / `essays` / `notes`);
 3. writes `insights/<slug>.html` from `site_builder.render_article()`;
 4. records the publish in `content_history.json`.
 
-On the site, `site/insights-loader.js` fetches `insights-data.json` and renders
-the featured essay, the essay grid, and the notes list, tagging each item with
-its pillar `key` so the existing filter chips work. If the fetch fails
-(e.g. opened over `file://`), the hardcoded fallback markup in `insights.html`
-remains. Committing/pushing to metis-website is manual and deliberate.
+On the site, `site/insights-feed.js` fetches `insights-data.json` and renders
+the featured essay, the library grid, the notes list, the home-page spotlight
+and the related-reading rows, tagging each item with its pillar `key` so the
+filter chips work. If the fetch fails (e.g. opened over `file://`), the static
+markup in each page remains.
+
+The article page `render_article()` writes uses the site's shared chrome
+(`site/site.css`, `site/article.css`, motion and feed scripts) so it matches
+every other article. It credits Metis Advisory Group and carries no personal
+name, email address or location; `test_article_template.py` guards this.
 
 ## Tech stack
 

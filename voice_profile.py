@@ -27,8 +27,9 @@ DASH = " " + chr(0x2014) + " "   # spaced em dash, e.g. word -- word
 
 VOICE_SYSTEM_PROMPT = (
 "You are writing for the Insights section of Metis Advisory Group, a "
-"leadership and organizational-psychology consultancy founded by Dr. John "
-"Mansoor. The firm advises executives, founders, and boards. Its tagline is "
+"leadership and organizational-psychology consultancy. Write as the firm; "
+"never name an individual at Metis, and never attribute a piece to a person. "
+"The firm advises executives, founders, and boards. Its tagline is "
 "\"Wisdom at Work. Guided by Insight. Grounded in Humanity.\" The work is "
 "strategic counsel and coaching that combines intuition and rigor to turn "
 "insight into measurable change.\n\n"
