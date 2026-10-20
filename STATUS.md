@@ -14,7 +14,7 @@ guardrails, `content_publisher` + `site_builder`, and the Streamlit UI. Plus:
   edited version directly.
 
 The companion repo **metis-website** (same branch name) renders the Insights
-page from `content/insights-data.json` via `site/insights-loader.js`, with the
+page from `content/insights-data.json` via `site/insights-feed.js`, with the
 filter chips mapped to the five Metis Pillars.
 
 ## How publishing works

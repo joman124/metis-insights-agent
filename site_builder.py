@@ -1,23 +1,39 @@
 # -*- coding: utf-8 -*-
 """
 Renders an approved draft into a standalone static article page for the
-metis-website repo, matching the Insights page's header, footer, and design
-system (colors_and_type.css). Article pages live at insights/<slug>.html, so
-all shared assets are referenced with a "../" prefix.
+metis-website repo. The page uses the site's shared chrome and styles
+(colors_and_type.css, site/site.css, site/article.css) and scripts (motion,
+the Insights feed for related reading, the reading-progress bar), so a new
+essay looks like every other article on metisag.com. Article pages live at
+insights/<slug>.html, so all shared assets are referenced with a "../" prefix.
+
+Pieces are credited to the firm, never to an individual: the site speaks as
+Metis Advisory Group throughout, and no personal name, email address or
+location appears on a generated page.
 
 Pure string templating (no external template engine), pure ASCII source. The
 live site stays "just HTML/CSS/JS" -- these pages are generated at publish
 time, not built in the visitor's browser.
 """
 
+import json
 import re
 import unicodedata
 from datetime import date
+from urllib.parse import quote
 
+from pillars import PILLARS
 from voice_profile import CONTENT_RULES
 
-BYLINE_NAME = "Dr. John Mansoor"
-BYLINE_ROLE = "Founding Partner"
+# Firm byline. Stored on every insights-data.json entry and shown on the page.
+BYLINE_NAME = "Metis Advisory Group"
+BYLINE_ROLE = "Insights"
+
+SITE_URL = "https://www.metisag.com"
+BOOKING_URL = "https://calendly.com/jomansoor/30min"
+_CHIP = {p["key"]: p["chip"] for p in PILLARS}
+_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 
 def slugify(title: str) -> str:
@@ -73,6 +89,13 @@ def quarter_label(published_date: str = None) -> str:
     return f"{d.year} " + chr(0x00B7) + f" Q{q}"
 
 
+_ARROW = ('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" '
+          'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+          'stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" '
+          'x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>')
+
+# Mirrors the article pages in metis-website (insights/*.html). Every
+# non-ASCII character is written as an HTML entity so this source stays ASCII.
 _ARTICLE_TEMPLATE = """<!doctype html>
 <html lang="en">
 <head>
@@ -80,118 +103,281 @@ _ARTICLE_TEMPLATE = """<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>%%TITLE%% | Insights | Metis Advisory Group</title>
   <meta name="description" content="%%DEK%%">
+  <link rel="canonical" href="%%URL%%">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#1C1E3F">
+  <meta property="og:site_name" content="Metis Advisory Group">
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="%%ISO_DATE%%">
+  <meta property="article:author" content="Metis Advisory Group">
+  <meta property="article:section" content="%%PILLAR%%">
+  <meta property="og:title" content="%%TITLE%% | Insights | Metis Advisory Group">
+  <meta property="og:description" content="%%DEK%%">
+  <meta property="og:url" content="%%URL%%">
+  <meta property="og:image" content="%%SITE%%/assets/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" type="image/png" href="../assets/logo-deep-indigo-transparent.png">
+  <link rel="apple-touch-icon" href="../assets/logo-deep-indigo.png">
+  <link rel="alternate" type="application/json" title="Metis Insights" href="../content/insights-data.json">
+  <link rel="preload" href="../fonts/LibreFranklin-Light.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="../colors_and_type.css">
-  <style>
-    body { margin:0; font-family: var(--font-sans); font-weight: 300; background: var(--bone-200); color: var(--metis-deep-indigo); -webkit-font-smoothing: antialiased; }
-    a { color: inherit; }
-    .top { position: fixed; top:0; left:0; right:0; height:72px; display:flex; align-items:center; padding:0 48px; background: rgba(246,244,242,0.85); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(28,30,63,0.06); z-index:100; }
-    .top .brand { display:flex; align-items:center; gap:12px; text-decoration:none; color: var(--metis-deep-indigo); border:0; font-weight:600; }
-    .top nav { display:flex; gap:28px; margin-left:48px; flex:1; justify-content: flex-end; padding-right: 24px; }
-    .top nav a { font-size:13px; text-decoration:none; border:0; color: var(--slate-700); }
-    .top nav a.active { color: var(--metis-deep-indigo); font-weight:500; }
-    .top .cta { display:inline-flex; align-items:center; gap:8px; padding:11px 18px; border-radius:8px; background:var(--metis-charred-plum); color:var(--bone-200); font-size:13px; font-weight:500; text-decoration:none; border:0; }
-    main { padding: 128px 24px 96px; }
-    article { max-width: 720px; margin: 0 auto; }
-    .back { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--metis-charred-plum); text-decoration: none; border-bottom: 1px solid currentColor; padding-bottom: 2px; }
-    .eyebrow { font-family: var(--font-mono); font-size: 11px; font-weight:500; letter-spacing:0.2em; text-transform:uppercase; color:var(--metis-charred-plum); margin: 40px 0 0; }
-    h1 { font-size: clamp(34px, 5vw, 56px); font-weight: 300; letter-spacing: -0.025em; line-height: 1.06; margin: 18px 0 20px; text-wrap: balance; }
-    .dek { font-size: 20px; line-height: 1.5; font-weight: 300; color: var(--slate-700); margin: 0 0 32px; }
-    .meta { display:flex; gap:16px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--slate-600); font-weight:500; padding: 24px 0; border-top: 1px solid rgba(28,30,63,0.10); border-bottom: 1px solid rgba(28,30,63,0.10); }
-    .meta .dot { color: var(--metis-charred-plum); }
-    .article-body { font-size: 18px; line-height: 1.7; font-weight: 300; color: var(--metis-deep-indigo); margin-top: 40px; }
-    .article-body p { margin: 0 0 24px; }
-    .byline { display:flex; align-items:center; gap:14px; margin-top: 56px; padding-top: 24px; border-top: 1px solid rgba(28,30,63,0.10); }
-    .byline .name { font-size: 13px; font-weight: 500; color: var(--metis-deep-indigo); }
-    .byline .role { font-family: var(--font-display); font-style: italic; font-size: 13px; color: var(--slate-600); }
-    footer { background: var(--metis-deep-indigo); color: var(--bone-200); padding: 64px 48px 36px; margin-top: 96px; }
-    footer .row { display:flex; justify-content: space-between; align-items: center; max-width: 1120px; margin:0 auto; }
-    footer .row a { color: var(--bone-200); font-size: 13px; margin-left: 24px; text-decoration: none; border: 0; }
-    footer .quote { font-family: var(--font-display); font-style: italic; font-size: 20px; max-width: 380px; line-height: 1.4; }
-    @media (max-width: 820px) { .top { padding: 0 20px; } main { padding: 104px 20px 64px; } footer { padding: 56px 24px 32px; } footer .row { flex-direction: column; align-items: flex-start; gap: 24px; } }
-  </style>
+  <link rel="stylesheet" href="../site/site.css">
+  <script src="../site/reveal.js"></script>
+  <link rel="stylesheet" href="../site/article.css">
+  <script type="application/ld+json">%%JSONLD%%</script>
+  <!-- Calendly popup widget -->
+  <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+  <script src="https://assets.calendly.com/assets/external/widget.js" async></script>
 </head>
 <body>
+  <a class="skip" href="#main">Skip to content</a>
   <header class="top">
-    <a class="brand" href="../index.html">
-      <img src="../assets/logo-deep-indigo-transparent.png" style="height:32px;" alt="">
+    <a class="brand" href="../index.html" aria-label="Metis Advisory Group, home">
+      <img src="../assets/logo-deep-indigo-transparent.png" alt="" width="34" height="34">
       <span>Metis Advisory Group</span>
     </a>
-    <nav>
+    <nav id="site-nav" aria-label="Primary">
+      <a href="../businesses.html">For Businesses</a>
+      <a href="../individuals.html">For Individuals</a>
+      <a href="../insights.html" class="nav-insights" aria-current="page"><span class="pulse-dot" aria-hidden="true"></span>Insights</a>
       <a href="../approach.html">Approach</a>
-      <a href="../services.html">Services</a>
-      <a href="../insights.html" class="active">Insights</a>
       <a href="../contact.html">Contact</a>
+      <a class="btn btn--primary nav-cta-mobile" href="%%BOOKING%%" target="_blank" rel="noopener" data-calendly>Book a free conversation</a>
     </nav>
-    <a class="cta" href="https://calendly.com/jomansoor/30min" target="_blank" rel="noopener">Schedule</a>
+    <a class="btn btn--primary btn--sm" href="%%BOOKING%%" target="_blank" rel="noopener" data-calendly>Book a call %%ARROW%%</a>
+    <button class="nav-toggle" type="button" aria-controls="site-nav" aria-expanded="false" aria-label="Open menu"><span></span><span></span><span></span></button>
   </header>
 
-  <main>
+  <main id="main">
+    <div class="read-progress" aria-hidden="true"><span></span></div>
     <article>
-      <a class="back" href="../insights.html">&larr;&nbsp; All insights</a>
-      <p class="eyebrow">%%PILLAR%%</p>
-      <h1>%%TITLE%%</h1>
-      <p class="dek">%%DEK%%</p>
-      <div class="meta">
-        <span>%%FORMAT_LABEL%%</span>
-        <span class="dot">%%DOT%%</span>
-        <span>%%READ_TIME%%</span>
-        <span class="dot">%%DOT%%</span>
-        <span>%%DATE%%</span>
-      </div>
+      <header class="art-head">
+        <nav class="crumbs" aria-label="Breadcrumb"><a href="../insights.html">&larr;&nbsp; Insights</a><span aria-hidden="true">/</span><a href="../insights.html#topic=%%TOPIC%%">%%CHIP%%</a></nav>
+        <p class="eyebrow eyebrow--rule">%%PILLAR%%</p>
+        <h1>%%TITLE%%</h1>
+        <p class="dek">%%DEK%%</p>
+        <div class="art-meta">
+          <span class="avatar" aria-hidden="true"><img src="../assets/logo-soft-bone-transparent.png" alt=""></span>
+          <div class="who"><div class="n">%%BYLINE_NAME%%</div><div class="r">%%BYLINE_ROLE%%</div></div>
+          <div class="facts"><span>%%FORMAT_LABEL%%</span><span class="dot">&middot;</span><span>%%READ_TIME%%</span><span class="dot">&middot;</span><time datetime="%%ISO_DATE%%">%%DATE%%</time></div>
+        </div>
+      </header>
+
       <div class="article-body">
         %%BODY%%
       </div>
-      <div class="byline">
-        <div>
-          <div class="name">%%BYLINE_NAME%%</div>
-          <div class="role">%%BYLINE_ROLE%%</div>
+      <div class="art-fin" aria-hidden="true"><span></span><span></span><span></span></div>
+
+      <footer class="art-end">
+        <div class="author-card">
+          <span class="avatar" aria-hidden="true"><img src="../assets/logo-soft-bone-transparent.png" alt=""></span>
+          <div>
+            <span class="k">From the practice</span>
+            <h2>Metis Advisory Group</h2>
+            <p>A psychologically informed advisory practice grounded in clinical psychology. We consult with organizations and coach the people who lead them; Insights is where we write down what the work teaches us.</p>
+            <div class="links">
+              <a class="link-arrow" href="../approach.html">Our approach &rarr;</a>
+              <a class="link-arrow" href="../services.html">Work with us &rarr;</a>
+            </div>
+          </div>
+        </div>
+        <div class="share">
+          <span class="lbl">Share</span>
+          <a href="https://www.linkedin.com/sharing/share-offsite/?url=%%QURL%%" target="_blank" rel="noopener">LinkedIn</a>
+          <a href="mailto:?subject=%%QTITLE%%&amp;body=%%QURL%%">Email</a>
+          <button type="button" data-copy-link="%%URL%%"><span>Copy link</span></button>
+        </div>
+      </footer>
+    </article>
+
+    <section class="art-cta">
+      <div class="wrap">
+        <div class="sec-head" style="margin-bottom:36px">
+          <div>
+            <p class="eyebrow eyebrow--rule">Is this your situation?</p>
+            <h2 class="h2">Let's talk about <em>yours</em>.</h2>
+          </div>
+          <p>This %%FORMAT_NOUN%% comes out of the work we do with organizations and the leaders inside them. A free 30-minute conversation is the easiest way to find out whether we can help.</p>
+        </div>
+        <div class="crosssell">
+          <a href="../businesses.html"><span><span class="k">For Businesses</span><span class="t">Bring this into your leadership team</span></span><span class="arr">%%ARROW%%</span></a>
+          <a href="../individuals.html"><span><span class="k">For Individuals</span><span class="t">Work on this one-to-one</span></span><span class="arr">%%ARROW%%</span></a>
         </div>
       </div>
-    </article>
+    </section>
+
+    <section class="section section--raised">
+      <div class="wrap">
+        <div class="sec-head" data-reveal>
+          <div>
+            <p class="eyebrow eyebrow--rule">Keep reading</p>
+            <h2 class="h2">More from <em>Insights</em>.</h2>
+          </div>
+          <p>Essays from the same practice. <a class="link-arrow" href="../insights.html" style="margin-left:6px">All insights &rarr;</a></p>
+        </div>
+        <!-- Filled from content/insights-data.json by site/insights-feed.js -->
+        <div class="related-list" data-feed="related" data-topics="%%TOPIC%%" data-limit="3" data-exclude="%%SLUG%%" data-reveal></div>
+      </div>
+    </section>
+
+    <section class="section--tight" style="padding-top:0">
+      <div class="wrap">
+        <div class="subscribe" id="subscribe" data-reveal>
+          <svg viewBox="0 0 160 100" aria-hidden="true" class="wm"><path d="M40 50 C 40 20 80 20 80 50 C 80 80 120 80 120 50 C 120 20 80 20 80 50 C 80 80 40 80 40 50 Z" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+          <div>
+            <p class="eyebrow eyebrow--rule">The Insights letter</p>
+            <h2 class="h2">New essays, <em>the morning</em> they publish.</h2>
+            <p>One email when something new goes up. Psychology for people who lead, written without filler. Unsubscribe in one click.</p>
+          </div>
+          <div>
+            <iframe src="https://metisag.substack.com/embed" title="Subscribe to the Metis Insights letter" loading="lazy" frameborder="0" scrolling="no"></iframe>
+            <div class="small">Delivered by Substack. Or read it there: <a href="https://metisag.substack.com" target="_blank" rel="noopener" style="color:var(--metis-charred-plum)">metisag.substack.com</a></div>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <footer>
-    <div class="row">
-      <div class="quote">Wisdom at Work.<br>Guided by Insight.<br>Grounded in Humanity.</div>
-      <div>
-        <a href="../index.html">Home</a>
-        <a href="../approach.html">Approach</a>
-        <a href="../services.html">Services</a>
-        <a href="../insights.html">Insights</a>
-        <a href="../contact.html">Contact</a>
+  <footer class="foot on-dark">
+    <img class="wm" src="../assets/logo-soft-bone-transparent.png" alt="">
+    <div class="wrap">
+      <div class="foot-grid">
+        <div>
+          <p class="tagline">Wisdom at Work.<br>Guided by Insight.<br>Grounded in Humanity.</p>
+          <a class="letter" href="../insights.html#subscribe"><b>The Insights letter</b><span>New essays on the psychology of leadership, sent when they publish &nbsp;&rarr;</span></a>
+        </div>
+        <div>
+          <h2>For Businesses</h2>
+          <ul>
+            <li><a href="../businesses.html#consulting">Organizational consulting</a></li>
+            <li><a href="../businesses.html#diagnostics">Diagnostics</a></li>
+            <li><a href="../businesses.html#leadership-development">Leadership development</a></li>
+            <li><a href="../businesses.html#retainer">Retainer advisory</a></li>
+            <li><a href="../businesses.html#workshops">Workshops &amp; keynotes</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2>For Individuals</h2>
+          <ul>
+            <li><a href="../individuals.html#executive-coaching">Executive coaching</a></li>
+            <li><a href="../individuals.html#group-coaching">Group coaching</a></li>
+            <li><a href="../individuals.html#intensives">Leadership intensives</a></li>
+            <li><a href="../individuals.html#strategy-sessions">Strategy sessions</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2>Insights</h2>
+          <ul>
+            <li><a href="../insights.html">Latest essays</a></li>
+            <li><a href="../insights.html#topic=self-mastery">Self-mastery</a></li>
+            <li><a href="../insights.html#topic=teams">Teams &amp; culture</a></li>
+            <li><a href="../insights.html#topic=change">Change</a></li>
+            <li><a href="../insights.html#subscribe">Subscribe</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2>The firm</h2>
+          <ul>
+            <li><a href="../approach.html">Approach</a></li>
+            <li><a href="../services.html">All services</a></li>
+            <li><a href="../contact.html">Contact</a></li>
+            <li><a href="%%BOOKING%%" target="_blank" rel="noopener" data-calendly>Book a call</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="foot-base">
+        <span>&copy; %%YEAR%% Metis Advisory Group, LLC &middot; metisag.com</span>
+        <span class="motto">Recognize &middot; Discern &middot; Recalibrate</span>
       </div>
     </div>
-    <div style="text-align:center; margin-top:48px; font-size:11px; color:var(--slate-400); letter-spacing:0.04em;">%%COPYRIGHT%%</div>
   </footer>
+  <!-- Motion: weighted scroll, scroll-tied glyphs, card tilt; then site behavior -->
+  <script src="../site/smooth-scroll.min.js"></script>
+  <script src="../site/glyph-motion.min.js"></script>
+  <script src="../site/cursor-fx.min.js"></script>
+  <script src="../site/site.js"></script>
+  <script src="../site/motion.js"></script>
+  <script src="../site/insights-feed.js"></script>
+  <script src="../site/article.js"></script>
 </body>
 </html>
 """
 
 
+def pretty_date(published_date: str) -> str:
+    """'2026-08-02' -> 'Aug 2, 2026'. Anything unparseable is returned as-is."""
+    try:
+        d = date.fromisoformat(published_date)
+    except (TypeError, ValueError):
+        return published_date or ""
+    return "%s %d, %d" % (_MONTHS[d.month - 1], d.day, d.year)
+
+
+def _json_ld(entry: dict, url: str) -> str:
+    """BlogPosting structured data, authored by the firm. Escaped so a title
+    can never close the surrounding <script> tag."""
+    ld = {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": entry.get("title", ""),
+        "description": entry.get("dek") or "",
+        "datePublished": entry.get("published_date") or "",
+        "dateModified": entry.get("published_date") or "",
+        "mainEntityOfPage": url,
+        "url": url,
+        "image": SITE_URL + "/assets/og-image.png",
+        "articleSection": entry.get("pillar", ""),
+        "author": {"@type": "Organization", "name": "Metis Advisory Group", "url": SITE_URL + "/"},
+        "publisher": {"@type": "Organization", "name": "Metis Advisory Group",
+                      "logo": {"@type": "ImageObject", "url": SITE_URL + "/assets/logo-deep-indigo.png"}},
+    }
+    text = json.dumps(ld, ensure_ascii=True)
+    return text.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+
+
 def render_article(entry: dict) -> str:
-    """Render a full standalone article HTML page from an insights-data entry.
+    """Render a full standalone article page from an insights-data entry.
     Expects keys: title, dek, pillar, format, read_time, published_date,
-    body_html. Missing optional fields degrade gracefully."""
+    body_html; slug and topic are used when present. Missing optional fields
+    degrade gracefully."""
     fmt = entry.get("format", "essay")
     format_label = {"field_note": "Field note",
                     "case_study": "Case Study"}.get(fmt, "Essay")
-    dek = entry.get("dek") or ""
+    format_noun = {"field_note": "field note",
+                   "case_study": "case study"}.get(fmt, "essay")
+    title = entry.get("title", "Untitled")
+    slug = entry.get("slug") or slugify(title)
+    topic = entry.get("topic", "")
+    url = SITE_URL + "/insights/" + slug
+    published = entry.get("published_date") or ""
     replacements = {
-        "%%TITLE%%": _escape(entry.get("title", "Untitled")),
-        "%%DEK%%": _escape(dek),
+        "%%TITLE%%": _escape(title),
+        "%%DEK%%": _escape(entry.get("dek") or ""),
         "%%PILLAR%%": _escape(entry.get("pillar", "")),
+        "%%TOPIC%%": _escape(topic),
+        "%%CHIP%%": _escape(_CHIP.get(topic, "Insights")),
+        "%%SLUG%%": _escape(slug),
         "%%FORMAT_LABEL%%": format_label,
+        "%%FORMAT_NOUN%%": format_noun,
         "%%READ_TIME%%": _escape(entry.get("read_time", "")),
-        "%%DATE%%": _escape(entry.get("published_date", "")),
-        "%%BODY%%": entry.get("body_html", ""),
-        "%%BYLINE_NAME%%": BYLINE_NAME,
-        "%%BYLINE_ROLE%%": BYLINE_ROLE,
-        "%%DOT%%": chr(0x00B7),
-        "%%COPYRIGHT%%": chr(0x00A9) + " " + str(date.today().year)
-                         + " Metis Advisory Group, LLC " + chr(0x00B7) + " metisag.com",
+        "%%ISO_DATE%%": _escape(published),
+        "%%DATE%%": _escape(pretty_date(published)),
+        "%%BYLINE_NAME%%": _escape(BYLINE_NAME),
+        "%%BYLINE_ROLE%%": _escape(BYLINE_ROLE),
+        "%%URL%%": url,
+        "%%QURL%%": quote(url, safe=""),
+        "%%QTITLE%%": quote(title, safe=""),
+        "%%SITE%%": SITE_URL,
+        "%%BOOKING%%": BOOKING_URL,
+        "%%ARROW%%": _ARROW,
+        "%%YEAR%%": str(date.today().year),
+        "%%JSONLD%%": _json_ld(entry, url),
     }
     html = _ARTICLE_TEMPLATE
     for token, value in replacements.items():
         html = html.replace(token, value)
-    return html
+    # The body goes in last, so text inside it that happens to look like a
+    # %%TOKEN%% is never substituted.
+    return html.replace("%%BODY%%", entry.get("body_html", ""))

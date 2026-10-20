@@ -109,9 +109,9 @@ swept into a deploy; a push rejected because someone pushed first is rebased and
 retried once. If anything fails, the files are still written and the error says
 so plainly.
 
-`site/insights-loader.js` in metis-website renders the data file into the
-Insights page (featured essay, essay grid, field notes), replacing each section
-only once there is real content for it. The `data-topic` on each published piece
+`site/insights-feed.js` in metis-website renders the data file into the
+Insights page (featured essay, library, field notes), the home-page spotlight
+and the related-reading rows. Pieces are credited to Metis Advisory Group. The `data-topic` on each published piece
 is a pillar key from `pillars.py`, matching the page's filter chips.
 
 ## Voice
