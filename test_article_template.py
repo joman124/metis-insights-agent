@@ -103,6 +103,17 @@ def test_publisher_stores_firm_byline():
     print("[OK] publish: data entry and article page carry the firm byline")
 
 
+def test_essay_cta_links_the_call():
+    # t115: the end-of-essay block promises a free call, so it must link to it.
+    html = site_builder.render_article(ENTRY)
+    cta = html.split('<section class="art-cta">', 1)[1].split("</section>", 1)[0]
+    assert 'href="%s"' % site_builder.BOOKING_URL in cta, "essay CTA must link the booking call"
+    assert "Book a free call" in cta
+    for old in ("Book a call", "Book a free conversation"):
+        assert old not in html, "one label for the discovery call: %r" % old
+    print("[OK] essay CTA: links the booking call with the site-wide label")
+
+
 if __name__ == "__main__":
     test_firm_byline()
     test_no_contact_details()
@@ -110,4 +121,5 @@ if __name__ == "__main__":
     test_escaping_and_json_ld()
     test_degrades_without_slug_or_topic()
     test_publisher_stores_firm_byline()
+    test_essay_cta_links_the_call()
     print("\nAll article-template tests passed.")
