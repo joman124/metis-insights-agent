@@ -144,9 +144,9 @@ _ARTICLE_TEMPLATE = """<!doctype html>
       <a href="../insights.html" class="nav-insights" aria-current="page"><span class="pulse-dot" aria-hidden="true"></span>Insights</a>
       <a href="../approach.html">Approach</a>
       <a href="../contact.html">Contact</a>
-      <a class="btn btn--primary nav-cta-mobile" href="%%BOOKING%%" target="_blank" rel="noopener" data-calendly>Book a free conversation</a>
+      <a class="btn btn--primary nav-cta-mobile" href="%%BOOKING%%" target="_blank" rel="noopener" data-calendly>Book a free call</a>
     </nav>
-    <a class="btn btn--primary btn--sm" href="%%BOOKING%%" target="_blank" rel="noopener" data-calendly>Book a call %%ARROW%%</a>
+    <a class="btn btn--primary btn--sm" href="%%BOOKING%%" target="_blank" rel="noopener" data-calendly>Book a free call %%ARROW%%</a>
     <button class="nav-toggle" type="button" aria-controls="site-nav" aria-expanded="false" aria-label="Open menu"><span></span><span></span><span></span></button>
   </header>
 
@@ -201,6 +201,7 @@ _ARTICLE_TEMPLATE = """<!doctype html>
           </div>
           <p>This %%FORMAT_NOUN%% comes out of the work we do with organizations and the leaders inside them. A free 30-minute conversation is the easiest way to find out whether we can help.</p>
         </div>
+        <p class="art-cta-book" style="margin:0 0 28px"><a class="btn btn--primary" href="%%BOOKING%%" target="_blank" rel="noopener" data-calendly>Book a free call %%ARROW%%</a></p>
         <div class="crosssell">
           <a href="../businesses.html"><span><span class="k">For Businesses</span><span class="t">Bring this into your leadership team</span></span><span class="arr">%%ARROW%%</span></a>
           <a href="../individuals.html"><span><span class="k">For Individuals</span><span class="t">Work on this one-to-one</span></span><span class="arr">%%ARROW%%</span></a>
@@ -283,7 +284,7 @@ _ARTICLE_TEMPLATE = """<!doctype html>
             <li><a href="../approach.html">Approach</a></li>
             <li><a href="../services.html">All services</a></li>
             <li><a href="../contact.html">Contact</a></li>
-            <li><a href="%%BOOKING%%" target="_blank" rel="noopener" data-calendly>Book a call</a></li>
+            <li><a href="%%BOOKING%%" target="_blank" rel="noopener" data-calendly>Book a free call</a></li>
           </ul>
         </div>
       </div>
