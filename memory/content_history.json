@@ -14,5 +14,41 @@
     "format": "essay",
     "href": "insights/the-psychology-of-the-partial-exit.html",
     "status": "published"
+  },
+  {
+    "title": "What a second reorg teaches the organization",
+    "date": "2026-11-18",
+    "pillar": "Organizational Systems & Change Psychology",
+    "format": "field_note",
+    "href": "insights/what-a-second-reorg-teaches-the-organization.html",
+    "status": "published",
+    "consent": "not_applicable"
+  },
+  {
+    "title": "The hallway version of the decision",
+    "date": "2026-11-18",
+    "pillar": "Communication, Influence & Relational Leadership",
+    "format": "field_note",
+    "href": "insights/the-hallway-version-of-the-decision.html",
+    "status": "published",
+    "consent": "not_applicable"
+  },
+  {
+    "title": "Choosing a successor is choosing a strategy",
+    "date": "2026-11-18",
+    "pillar": "Strategic Thinking & Decision Architecture",
+    "format": "field_note",
+    "href": "insights/choosing-a-successor-is-choosing-a-strategy.html",
+    "status": "published",
+    "consent": "not_applicable"
+  },
+  {
+    "title": "The offsite that changed nothing",
+    "date": "2026-11-20",
+    "pillar": "Team Dynamics & Culture Engineering",
+    "format": "field_note",
+    "href": "insights/the-offsite-that-changed-nothing.html",
+    "status": "published",
+    "consent": "not_applicable"
   }
 ]
